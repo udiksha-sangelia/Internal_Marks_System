@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% from "partials/flash.html" import flash_messages %}
+{% block title %}Faculty Dashboard - Internal Marks{% endblock %}
+
+{% block body %}
+<div class="user-layout">
+    <header class="user-topbar">
+        <div class="user-brand">
+            <div class="brand-icon small">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/></svg>
+            </div>
+            <span>Internal Marks</span>
+        </div>
+        <div class="user-topbar-right">
+            <div class="profile-chip">
+                <div class="profile-avatar">{{ faculty.name[0] }}</div>
+                <span class="profile-name">{{ faculty.name }}</span>
+            </div>
+            <a href="{{ url_for('faculty_logout') }}" class="btn-outline-sm">Logout</a>
+        </div>
+    </header>
+
+    <main class="user-main">
+        <h1>Welcome, {{ faculty.name }} 👋</h1>
+        <p class="page-subtitle">Faculty Dashboard — MCA Department</p>
+
+        {{ flash_messages() }}
+
+        <section class="stats-row three-col">
+            <div class="stat-card">
+                <div class="stat-icon green">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/></svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value">{{ subject_count }}</span>
+                    <span class="stat-label">Allocated Subjects</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon purple">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value">{{ total_students }}</span>
+                    <span class="stat-label">Students (your subjects)</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon blue">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value">{{ faculty.department }}</span>
+                    <span class="stat-label">Department</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header"><h2>My Profile</h2></div>
+            <div class="profile-details">
+                <div class="detail-row">
+                    <span class="detail-label">Name</span>
+                    <span class="detail-value">{{ faculty.name }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Email</span>
+                    <span class="detail-value">{{ faculty.email }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Department</span>
+                    <span class="detail-value">{{ faculty.department }}</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header"><h2>My Allocated Subjects</h2></div>
+            {% if subjects %}
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Code</th>
+                            <th>Subject Name</th>
+                            <th>Semester</th>
+                            <th>Students</th>
+                            <th>Marks Entered</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for sub in subjects %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td><strong>{{ sub.code }}</strong></td>
+                            <td>{{ sub.name }}</td>
+                            <td>Sem {{ sub.semester }}</td>
+                            <td>{{ sub.student_count }}</td>
+                            <td>{{ sub.marks_entered }} / {{ sub.student_count }}</td>
+                            <td>
+                                <a href="{{ url_for('faculty_subject_marks', subject_id=sub.id) }}" class="btn-primary-sm link-btn">Manage Marks</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="empty-text">No subjects allocated to you yet. Contact admin to assign subjects.</p>
+            {% endif %}
+        </section>
+    </main>
+</div>
+{% endblock %}

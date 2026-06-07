@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% from "partials/flash.html" import flash_messages %}
+{% block title %}Faculties - Internal Marks{% endblock %}
+
+{% block body %}
+<div class="app-layout">
+    {% include "partials/admin_sidebar.html" %}
+
+    <main class="main">
+        <header class="topbar">
+            <div>
+                <h1>MCA Faculties</h1>
+                <p class="page-subtitle">Manage faculty records — add manually or upload CSV</p>
+            </div>
+        </header>
+
+        {{ flash_messages() }}
+
+        <div class="management-grid">
+            <!-- Add Faculty Form -->
+            <section class="panel">
+                <div class="panel-header"><h2>Add Faculty</h2></div>
+                <form method="POST" class="inline-form">
+                    <input type="hidden" name="action" value="add">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Name</label>
+                            <input type="text" name="name" placeholder="Full name" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" name="email" placeholder="email@college.edu" required>
+                        </div>
+                        <div class="form-group form-action">
+                            <label>&nbsp;</label>
+                            <button type="submit" class="btn-primary-sm">Add Faculty</button>
+                        </div>
+                    </div>
+                </form>
+            </section>
+
+            <!-- CSV Upload -->
+            <section class="panel">
+                <div class="panel-header"><h2>Upload CSV</h2></div>
+                <form method="POST" enctype="multipart/form-data" class="csv-form">
+                    <input type="hidden" name="action" value="csv_upload">
+                    <div class="csv-upload-area">
+                        <input type="file" name="csv_file" accept=".csv" required id="faculty-csv">
+                        <label for="faculty-csv" class="csv-label">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            Choose CSV file
+                        </label>
+                        <button type="submit" class="btn-primary-sm">Upload</button>
+                    </div>
+                    <p class="csv-hint">CSV columns: <code>name, email</code></p>
+                </form>
+            </section>
+        </div>
+
+        <!-- Faculties Table -->
+        <section class="panel">
+            <div class="panel-header">
+                <h2>Faculty List ({{ faculties|length }})</h2>
+            </div>
+            {% if faculties %}
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Department</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for f in faculties %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td><strong>{{ f.name }}</strong></td>
+                            <td>{{ f.email }}</td>
+                            <td>{{ f.department }}</td>
+                            <td>
+                                <form method="POST" action="{{ url_for('delete_faculty', faculty_id=f.id) }}" onsubmit="return confirm('Delete {{ f.name }}?')">
+                                    <button type="submit" class="btn-danger-sm">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="empty-text">No faculties yet. Add manually or upload a CSV file.</p>
+            {% endif %}
+        </section>
+    </main>
+</div>
+{% endblock %}

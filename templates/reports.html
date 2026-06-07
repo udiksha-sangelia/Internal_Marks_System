@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Reports - Internal Marks{% endblock %}
+
+{% block body %}
+<div class="app-layout">
+    {% include "partials/admin_sidebar.html" %}
+
+    <main class="main">
+        <header class="topbar">
+            <h1>Reports</h1>
+        </header>
+
+        <section class="stats-row">
+            <div class="stat-card">
+                <div class="stat-icon purple">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value">{{ stats.students }}</span>
+                    <span class="stat-label">Total Students</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon green">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value">{{ stats.faculties }}</span>
+                    <span class="stat-label">Total Faculties</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon yellow">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/></svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value">{{ stats.subjects }}</span>
+                    <span class="stat-label">Total Subjects</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon pink">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value">{{ stats.departments }}</span>
+                    <span class="stat-label">Departments</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header"><h2>MCA Department Summary</h2></div>
+            <p class="empty-text">Detailed reports and mark sheets will be generated here.</p>
+        </section>
+    </main>
+</div>
+{% endblock %}

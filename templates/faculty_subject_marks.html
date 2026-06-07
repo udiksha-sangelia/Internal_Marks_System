@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% from "partials/flash.html" import flash_messages %}
+{% block title %}{{ subject.name }} Marks - Faculty{% endblock %}
+
+{% block body %}
+<div class="user-layout">
+    <header class="user-topbar">
+        <div class="user-brand">
+            <div class="brand-icon small">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/></svg>
+            </div>
+            <span>Internal Marks</span>
+        </div>
+        <div class="user-topbar-right">
+            <div class="profile-chip">
+                <div class="profile-avatar">{{ faculty.name[0] }}</div>
+                <span class="profile-name">{{ faculty.name }}</span>
+            </div>
+            <a href="{{ url_for('faculty_logout') }}" class="btn-outline-sm">Logout</a>
+        </div>
+    </header>
+
+    <main class="user-main">
+        <a href="{{ url_for('faculty_dashboard') }}" class="back-link">← Back to Dashboard</a>
+        <h1>{{ subject.name }} ({{ subject.code }})</h1>
+        <p class="page-subtitle">Semester {{ subject.semester }} — Assignments (/10), Lab (/10), Theory (/20)</p>
+
+        {{ flash_messages() }}
+
+        <div class="management-grid">
+            <section class="panel">
+                <div class="panel-header"><h2>Upload Marks CSV</h2></div>
+                <form method="POST" enctype="multipart/form-data" class="csv-form">
+                    <input type="hidden" name="action" value="csv_upload">
+                    <div class="csv-upload-area">
+                        <input type="file" name="csv_file" accept=".csv" required id="marks-csv">
+                        <label for="marks-csv" class="csv-label">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            Choose CSV file
+                        </label>
+                        <button type="submit" class="btn-primary-sm">Upload Marks</button>
+                    </div>
+                    <p class="csv-hint">CSV columns: <code>usn, assignment_marks, lab_marks, theory_marks</code></p>
+                </form>
+            </section>
+
+            <section class="panel info-panel">
+                <div class="panel-header"><h2>Mark Components</h2></div>
+                <div class="profile-details">
+                    <div class="detail-row">
+                        <span class="detail-label">Assignments</span>
+                        <span class="detail-value">Max 10</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Lab</span>
+                        <span class="detail-value">Max 10</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Theory</span>
+                        <span class="detail-value">Max 20</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Students</span>
+                        <span class="detail-value">{{ students|length }}</span>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <section class="panel">
+            <div class="panel-header">
+                <h2>Student List & Marks ({{ students|length }})</h2>
+            </div>
+
+            {% if students %}
+            <form method="POST">
+                <input type="hidden" name="action" value="save_marks">
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>USN</th>
+                                <th>Name</th>
+                                <th>Assignments (/10)</th>
+                                <th>Lab (/10)</th>
+                                <th>Theory (/20)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for s in students %}
+                            <tr>
+                                <td>{{ loop.index }}</td>
+                                <td><strong>{{ s.usn }}</strong></td>
+                                <td>{{ s.name }}</td>
+                                <td>
+                                    <input type="number" name="assignment_{{ s.id }}" class="marks-input"
+                                        min="0" max="10" step="0.5"
+                                        value="{{ s.assignment_marks if s.assignment_marks is not none else '' }}" placeholder="—">
+                                </td>
+                                <td>
+                                    <input type="number" name="lab_{{ s.id }}" class="marks-input"
+                                        min="0" max="10" step="0.5"
+                                        value="{{ s.lab_marks if s.lab_marks is not none else '' }}" placeholder="—">
+                                </td>
+                                <td>
+                                    <input type="number" name="theory_{{ s.id }}" class="marks-input wide"
+                                        min="0" max="20" step="0.5"
+                                        value="{{ s.marks if s.marks is not none else '' }}" placeholder="—">
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary-sm">Save All Marks</button>
+                </div>
+            </form>
+            {% else %}
+            <p class="empty-text">No students found for Semester {{ subject.semester }}.</p>
+            {% endif %}
+        </section>
+    </main>
+</div>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% from "partials/flash.html" import flash_messages %}
+{% block title %}Departments - Internal Marks{% endblock %}
+
+{% block body %}
+<div class="app-layout">
+    {% include "partials/admin_sidebar.html" %}
+
+    <main class="main">
+        <header class="topbar">
+            <h1>Departments</h1>
+        </header>
+
+        {{ flash_messages() }}
+
+        <section class="panel">
+            <div class="panel-header"><h2>MCA Department</h2></div>
+            <div class="dept-grid single-dept">
+                <a href="{{ url_for('department_mca') }}" class="dept-card clickable">
+                    <div class="dept-icon blue">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                    </div>
+                    <h3>MCA</h3>
+                    <p>{{ student_count }} Students</p>
+                    <p>{{ faculty_count }} Faculties</p>
+                    <p>{{ subject_count }} Subjects</p>
+                    <span class="dept-link-hint">Click to manage →</span>
+                </a>
+            </div>
+        </section>
+    </main>
+</div>
+{% endblock %}

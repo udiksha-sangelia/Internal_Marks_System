@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% from "partials/flash.html" import flash_messages %}
+{% block title %}MCA Department - Internal Marks{% endblock %}
+
+{% block body %}
+<div class="app-layout">
+    {% include "partials/admin_sidebar.html" %}
+
+    <main class="main">
+        <header class="topbar">
+            <div>
+                <a href="{{ url_for('dashboard') }}" class="back-link">← Back to Dashboard</a>
+                <h1>MCA Department</h1>
+            </div>
+        </header>
+
+        {{ flash_messages() }}
+
+        <section class="dept-hub-grid">
+            <a href="{{ url_for('students') }}" class="dept-hub-card">
+                <div class="hub-icon purple">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                </div>
+                <h3>Students</h3>
+                <p>{{ student_count }} students enrolled</p>
+                <span class="hub-action">Manage Students →</span>
+            </a>
+
+            <a href="{{ url_for('faculties') }}" class="dept-hub-card">
+                <div class="hub-icon green">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </div>
+                <h3>Faculties</h3>
+                <p>{{ faculty_count }} faculty members</p>
+                <span class="hub-action">Manage Faculties →</span>
+            </a>
+        </section>
+    </main>
+</div>
+{% endblock %}

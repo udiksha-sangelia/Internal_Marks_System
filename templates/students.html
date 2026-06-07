@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% from "partials/flash.html" import flash_messages %}
+{% block title %}Students - Internal Marks{% endblock %}
+
+{% block body %}
+<div class="app-layout">
+    {% include "partials/admin_sidebar.html" %}
+
+    <main class="main">
+        <header class="topbar">
+            <div>
+                <h1>MCA Students</h1>
+                <p class="page-subtitle">Manage student records — add manually or upload CSV</p>
+            </div>
+        </header>
+
+        {{ flash_messages() }}
+
+        <div class="management-grid">
+            <!-- Add Student Form -->
+            <section class="panel">
+                <div class="panel-header"><h2>Add Student</h2></div>
+                <form method="POST" class="inline-form">
+                    <input type="hidden" name="action" value="add">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>USN</label>
+                            <input type="text" name="usn" placeholder="e.g. 1MS22MC001" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Name</label>
+                            <input type="text" name="name" placeholder="Full name" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" name="email" placeholder="email@college.edu" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Semester</label>
+                            <select name="semester">
+                                {% for s in range(1, 7) %}
+                                <option value="{{ s }}">Semester {{ s }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group form-action">
+                            <label>&nbsp;</label>
+                            <button type="submit" class="btn-primary-sm">Add Student</button>
+                        </div>
+                    </div>
+                </form>
+            </section>
+
+            <!-- CSV Upload -->
+            <section class="panel">
+                <div class="panel-header"><h2>Upload CSV</h2></div>
+                <form method="POST" enctype="multipart/form-data" class="csv-form">
+                    <input type="hidden" name="action" value="csv_upload">
+                    <div class="csv-upload-area">
+                        <input type="file" name="csv_file" accept=".csv" required id="student-csv">
+                        <label for="student-csv" class="csv-label">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            Choose CSV file
+                        </label>
+                        <button type="submit" class="btn-primary-sm">Upload</button>
+                    </div>
+                    <p class="csv-hint">CSV columns: <code>usn, name, email, semester</code></p>
+                </form>
+            </section>
+        </div>
+
+        <!-- Students Table -->
+        <section class="panel">
+            <div class="panel-header">
+                <h2>Student List ({{ students|length }})</h2>
+            </div>
+            {% if students %}
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>USN</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Semester</th>
+                            <th>Department</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in students %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td><strong>{{ s.usn }}</strong></td>
+                            <td>{{ s.name }}</td>
+                            <td>{{ s.email }}</td>
+                            <td>Sem {{ s.semester }}</td>
+                            <td>{{ s.department }}</td>
+                            <td>
+                                <form method="POST" action="{{ url_for('delete_student', student_id=s.id) }}" onsubmit="return confirm('Delete {{ s.name }}?')">
+                                    <button type="submit" class="btn-danger-sm">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="empty-text">No students yet. Add manually or upload a CSV file.</p>
+            {% endif %}
+        </section>
+    </main>
+</div>
+{% endblock %}

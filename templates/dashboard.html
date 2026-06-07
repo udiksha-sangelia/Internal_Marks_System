@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% from "partials/flash.html" import flash_messages %}
+{% block title %}Dashboard - Internal Marks{% endblock %}
+
+{% block body %}
+<div class="app-layout">
+    {% include "partials/admin_sidebar.html" %}
+
+    <main class="main">
+        <header class="topbar">
+            <h1>Welcome, {{ admin_name }} <span class="wave">👋</span></h1>
+            <div class="topbar-actions">
+                <div class="profile-chip">
+                    <div class="profile-avatar">A</div>
+                    <span class="profile-name">Admin</span>
+                </div>
+            </div>
+        </header>
+
+        {{ flash_messages() }}
+
+        <section class="stats-row">
+            <div class="stat-card">
+                <div class="stat-icon purple">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value">{{ stats.students }}</span>
+                    <span class="stat-label">Total Students</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon green">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value">{{ stats.faculties }}</span>
+                    <span class="stat-label">Total Faculties</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon yellow">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value">{{ stats.subjects }}</span>
+                    <span class="stat-label">Total Subjects</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon pink">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value">{{ stats.departments }}</span>
+                    <span class="stat-label">Departments</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header">
+                <h2>Departments Overview</h2>
+            </div>
+            <div class="dept-grid single-dept">
+                <a href="{{ url_for('department_mca') }}" class="dept-card clickable">
+                    <div class="dept-icon blue">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                    </div>
+                    <h3>MCA</h3>
+                    <p>{{ stats.students }} Students</p>
+                    <p>{{ stats.subjects }} Subjects</p>
+                    <span class="dept-link-hint">Click to manage →</span>
+                </a>
+            </div>
+        </section>
+
+        <section class="bottom-row">
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>Recent Faculties</h2>
+                    <a href="{{ url_for('faculties') }}" class="view-all">View All</a>
+                </div>
+                {% if recent_faculties %}
+                <ul class="faculty-list">
+                    {% for f in recent_faculties %}
+                    <li class="faculty-item">
+                        <div class="faculty-avatar">{{ f.name[0] }}</div>
+                        <div class="faculty-info">
+                            <span class="faculty-name">{{ f.name }}</span>
+                            <span class="faculty-email">{{ f.email }}</span>
+                        </div>
+                        <span class="dept-tag mca">{{ f.department }} Department</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="empty-text">No faculties added yet. <a href="{{ url_for('faculties') }}">Add faculty</a></p>
+                {% endif %}
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>Recent Activities</h2>
+                </div>
+                {% if recent_activities %}
+                <ul class="activity-list">
+                    {% for a in recent_activities %}
+                    <li class="activity-item">
+                        <span class="activity-text">{{ a.text }}</span>
+                        <span class="activity-time">{{ a.time }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="empty-text">No activities yet.</p>
+                {% endif %}
+            </div>
+        </section>
+    </main>
+</div>
+{% endblock %}
