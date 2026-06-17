@@ -75,42 +75,78 @@
                 <h2>Student List ({{ students|length }})</h2>
             </div>
             {% if students %}
-            <div class="table-wrap">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>USN</th>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Semester</th>
-                            <th>Department</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for s in students %}
-                        <tr>
-                            <td>{{ loop.index }}</td>
-                            <td><strong>{{ s.usn }}</strong></td>
-                            <td>{{ s.name }}</td>
-                            <td>{{ s.email }}</td>
-                            <td>Sem {{ s.semester }}</td>
-                            <td>{{ s.department }}</td>
-                            <td>
-                                <form method="POST" action="{{ url_for('delete_student', student_id=s.id) }}" onsubmit="return confirm('Delete {{ s.name }}?')">
-                                    <button type="submit" class="btn-danger-sm">Delete</button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <div class="bulk-actions" id="bulkActionsBar" style="display: none; margin-bottom: 1rem; padding: 1rem; background: #f5f5f5; border-radius: 4px;">
+                <span id="selectedCount">0 selected</span>
+                <form method="POST" action="{{ url_for('bulk_delete_students') }}" style="display: inline;" onsubmit="return confirm('Delete selected students?')">
+                    <button type="submit" class="btn-danger-sm" style="margin-left: 1rem;">Delete Selected</button>
+                </form>
             </div>
+            <form id="studentForm" method="POST">
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 40px;">
+                                    <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)">
+                                </th>
+                                <th>#</th>
+                                <th>USN</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Semester</th>
+                                <th>Department</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for s in students %}
+                            <tr>
+                                <td>
+                                    <input type="checkbox" name="student_ids" value="{{ s.id }}" class="studentCheckbox" onchange="updateBulkActions()">
+                                </td>
+                                <td>{{ loop.index }}</td>
+                                <td><strong>{{ s.usn }}</strong></td>
+                                <td>{{ s.name }}</td>
+                                <td>{{ s.email }}</td>
+                                <td>Sem {{ s.semester }}</td>
+                                <td>{{ s.department }}</td>
+                                <td>
+                                    <form method="POST" action="{{ url_for('delete_student', student_id=s.id) }}" onsubmit="return confirm('Delete {{ s.name }}?')" style="display: inline;">
+                                        <button type="submit" class="btn-danger-sm">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </form>
             {% else %}
             <p class="empty-text">No students yet. Add manually or upload a CSV file.</p>
             {% endif %}
         </section>
+
+        <script>
+            function toggleSelectAll(checkbox) {
+                const checkboxes = document.querySelectorAll('.studentCheckbox');
+                checkboxes.forEach(cb => cb.checked = checkbox.checked);
+                updateBulkActions();
+            }
+
+            function updateBulkActions() {
+                const checkboxes = document.querySelectorAll('.studentCheckbox:checked');
+                const bulkBar = document.getElementById('bulkActionsBar');
+                const selectedCount = document.getElementById('selectedCount');
+                
+                if (checkboxes.length > 0) {
+                    bulkBar.style.display = 'block';
+                    selectedCount.textContent = checkboxes.length + ' selected';
+                } else {
+                    bulkBar.style.display = 'none';
+                    document.getElementById('selectAllCheckbox').checked = false;
+                }
+            }
+        </script>
     </main>
 </div>
 {% endblock %}

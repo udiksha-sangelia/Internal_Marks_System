@@ -207,6 +207,24 @@ def delete_student(student_id):
     return redirect(url_for("students"))
 
 
+@app.route("/students/bulk-delete", methods=["POST"])
+@admin_required
+def bulk_delete_students():
+    student_ids = request.form.getlist("student_ids")
+    if not student_ids:
+        flash("No students selected.", "error")
+    else:
+        deleted_count = 0
+        for student_id in student_ids:
+            try:
+                if db.delete_student(int(student_id)):
+                    deleted_count += 1
+            except Exception:
+                pass
+        flash(f"{deleted_count} student(s) deleted successfully.", "success")
+    return redirect(url_for("students"))
+
+
 # ---------- Faculties Management ----------
 
 @app.route("/faculties", methods=["GET", "POST"])
