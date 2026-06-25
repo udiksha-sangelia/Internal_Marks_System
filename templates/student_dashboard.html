@@ -21,7 +21,7 @@
 
     <main class="user-main">
         <h1>Welcome, {{ student.name }} 👋</h1>
-        <p class="page-subtitle">Student Dashboard — MCA Department — Semester {{ student.semester }}</p>
+        <p class="page-subtitle">Student Dashboard — MCA Department — Current Semester {{ student.semester }}</p>
 
         <section class="stats-row three-col">
             <div class="stat-card">
@@ -39,7 +39,7 @@
                 </div>
                 <div class="stat-info">
                     <span class="stat-value">{{ subject_marks|length }}</span>
-                    <span class="stat-label">Subjects</span>
+                    <span class="stat-label">Subjects (Sem {{ view_sem }})</span>
                 </div>
             </div>
             <div class="stat-card highlight-card">
@@ -48,28 +48,53 @@
                 </div>
                 <div class="stat-info">
                     <span class="stat-value">{{ overall_average if overall_average is not none else '—' }}</span>
-                    <span class="stat-label">Overall Average</span>
+                    <span class="stat-label">Sem {{ view_sem }} Avg Final</span>
                 </div>
             </div>
         </section>
 
         <section class="panel">
             <div class="panel-header">
-                <h2>Subject-wise Marks — Semester {{ student.semester }}</h2>
+                <h2>Subject-wise Marks</h2>
             </div>
 
+            {% if available_sems|length > 1 %}
+            <div class="sem-tabs">
+                {% for sem in available_sems %}
+                <a href="{{ url_for('student_dashboard', sem=sem) }}"
+                   class="sem-tab{% if sem == view_sem %} active{% endif %}">
+                    Semester {{ sem }}
+                    {% if sem == student.semester %}<small>(Current)</small>{% endif %}
+                </a>
+                {% endfor %}
+            </div>
+            {% endif %}
+
             {% if subject_marks %}
-            <div class="table-wrap">
+            <div class="table-wrap marks-table-wrap">
                 <table class="data-table marks-table">
                     <thead>
+                        <tr class="group-header-row">
+                            <th rowspan="2">#</th>
+                            <th rowspan="2">Code</th>
+                            <th rowspan="2">Subject</th>
+                            <th colspan="2" class="group-header theory-group">Theory</th>
+                            <th colspan="2" class="group-header lab-group">Lab Tests</th>
+                            <th rowspan="2" class="group-header lab-group">Lab<br><small>/50</small></th>
+                            <th colspan="2" class="group-header assignment-group">Assignments</th>
+                            <th rowspan="2" class="group-header skill-group">Skill Dev<br><small>/50</small></th>
+                            <th rowspan="2">Theory<br><small>/50</small></th>
+                            <th rowspan="2">Component<br><small>/50</small></th>
+                            <th rowspan="2">Total<br><small>/50</small></th>
+                            <th rowspan="2">Result</th>
+                        </tr>
                         <tr>
-                            <th>#</th>
-                            <th>Code</th>
-                            <th>Subject</th>
-                            <th>Assignments<br><small>(/10)</small></th>
-                            <th>Lab<br><small>(/10)</small></th>
-                            <th>Theory<br><small>(/20)</small></th>
-                            <th>Average</th>
+                            <th><small>T1/25</small></th>
+                            <th><small>T2/25</small></th>
+                            <th><small>L1/100</small></th>
+                            <th><small>L2/100</small></th>
+                            <th><small>A1/25</small></th>
+                            <th><small>A2/25</small></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -78,30 +103,20 @@
                             <td>{{ loop.index }}</td>
                             <td><strong>{{ sub.code }}</strong></td>
                             <td>{{ sub.name }}</td>
+                            <td>{% if sub.theory_1 is not none %}<span class="mark-badge theory">{{ sub.theory_1 }}</span>{% else %}<span class="mark-pending">—</span>{% endif %}</td>
+                            <td>{% if sub.theory_2 is not none %}<span class="mark-badge theory">{{ sub.theory_2 }}</span>{% else %}<span class="mark-pending">—</span>{% endif %}</td>
+                            <td>{% if sub.lab_1 is not none %}<span class="mark-badge lab">{{ sub.lab_1 }}</span>{% else %}<span class="mark-pending">—</span>{% endif %}</td>
+                            <td>{% if sub.lab_2 is not none %}<span class="mark-badge lab">{{ sub.lab_2 }}</span>{% else %}<span class="mark-pending">—</span>{% endif %}</td>
+                            <td>{% if sub.lab_final is not none %}<strong>{{ sub.lab_final }}</strong>{% else %}<span class="mark-pending">—</span>{% endif %}</td>
+                            <td>{% if sub.mark_type == 'assignments' and sub.assignment_1 is not none %}<span class="mark-badge assignment">{{ sub.assignment_1 }}</span>{% else %}<span class="mark-pending">—</span>{% endif %}</td>
+                            <td>{% if sub.mark_type == 'assignments' and sub.assignment_2 is not none %}<span class="mark-badge assignment">{{ sub.assignment_2 }}</span>{% else %}<span class="mark-pending">—</span>{% endif %}</td>
+                            <td>{% if sub.mark_type == 'skill_development' and sub.skill_development is not none %}<span class="mark-badge skill">{{ sub.skill_development }}</span>{% else %}<span class="mark-pending">—</span>{% endif %}</td>
+                            <td>{% if sub.theory_total is not none %}<strong>{{ sub.theory_total }}</strong>{% else %}<span class="mark-pending">—</span>{% endif %}</td>
+                            <td>{% if sub.component_total is not none %}<strong>{{ sub.component_total }}</strong>{% else %}<span class="mark-pending">—</span>{% endif %}</td>
+                            <td>{% if sub.final_marks is not none %}<strong class="avg-value">{{ sub.final_marks }}</strong>{% else %}<span class="mark-pending">—</span>{% endif %}</td>
                             <td>
-                                {% if sub.assignment_marks is not none %}
-                                <span class="mark-badge assignment">{{ sub.assignment_marks }}</span>
-                                {% else %}
-                                <span class="mark-pending">—</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if sub.lab_marks is not none %}
-                                <span class="mark-badge lab">{{ sub.lab_marks }}</span>
-                                {% else %}
-                                <span class="mark-pending">—</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if sub.theory_marks is not none %}
-                                <span class="mark-badge theory">{{ sub.theory_marks }}</span>
-                                {% else %}
-                                <span class="mark-pending">—</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if sub.average is not none %}
-                                <strong class="avg-value">{{ sub.average }}</strong>
+                                {% if sub.result %}
+                                <span class="result-badge {{ sub.result|lower }}">{{ sub.result }}</span>
                                 {% else %}
                                 <span class="mark-pending">—</span>
                                 {% endif %}
@@ -112,16 +127,17 @@
                     {% if overall_average is not none %}
                     <tfoot>
                         <tr class="overall-row">
-                            <td colspan="6" class="overall-label">Overall Semester Average</td>
+                            <td colspan="13" class="overall-label">Semester {{ view_sem }} Average Final Marks</td>
                             <td><strong class="avg-value overall">{{ overall_average }}</strong></td>
+                            <td></td>
                         </tr>
                     </tfoot>
                     {% endif %}
                 </table>
             </div>
-            <p class="marks-note">Average per subject = mean of entered components (Assignments, Lab, Theory). Overall average = mean across all subjects with marks.</p>
+            <p class="marks-note">Lab Final = (Lab 1 + Lab 2 average) scaled to /50. Total = average of Theory, Component & Lab sections (/50). PASS if Total ≥ {{ pass_threshold }}.</p>
             {% else %}
-            <p class="empty-text">No subjects found for Semester {{ student.semester }} yet.</p>
+            <p class="empty-text">No subjects found for Semester {{ view_sem }} yet.</p>
             {% endif %}
         </section>
 

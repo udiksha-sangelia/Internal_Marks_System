@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% from "partials/flash.html" import flash_messages %}
+{% block title %}Reports - Faculty{% endblock %}
+
+{% block body %}
+<div class="user-layout">
+    <header class="user-topbar">
+        <div class="user-brand">
+            <div class="brand-icon small">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/></svg>
+            </div>
+            <span>Internal Marks</span>
+        </div>
+        <div class="user-topbar-right">
+            <div class="profile-chip">
+                <div class="profile-avatar">{{ faculty.name[0] }}</div>
+                <span class="profile-name">{{ faculty.name }}</span>
+            </div>
+            <a href="{{ url_for('faculty_logout') }}" class="btn-outline-sm">Logout</a>
+        </div>
+    </header>
+
+    <main class="user-main">
+        <a href="{{ url_for('faculty_dashboard') }}" class="back-link">← Back to Dashboard</a>
+        <h1>Reports & Statistics</h1>
+        <p class="page-subtitle">Performance overview for your allocated subjects</p>
+
+        {{ flash_messages() }}
+
+        <section class="stats-row three-col">
+            <div class="stat-card">
+                <div class="stat-icon purple">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/></svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value">{{ report.subject_count }}</span>
+                    <span class="stat-label">Subjects</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon green">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value">{{ report.total_students }}</span>
+                    <span class="stat-label">Total Students</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon yellow">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value">{{ report.total_marks_entered }}</span>
+                    <span class="stat-label">Marks Entered</span>
+                </div>
+            </div>
+        </section>
+
+        {% if report.subjects %}
+        {% for sub in report.subjects %}
+        <section class="panel">
+            <div class="panel-header">
+                <div>
+                    <h2>{{ sub.name }} ({{ sub.code }})</h2>
+                    <p class="page-subtitle" style="margin-top: 4px;">Semester {{ sub.semester }}</p>
+                </div>
+                <a href="{{ url_for('faculty_subject_marks', subject_id=sub.subject_id) }}" class="btn-primary-sm link-btn">Manage Marks</a>
+            </div>
+
+            <div class="stats-row three-col report-stats">
+                <div class="stat-card compact">
+                    <div class="stat-info">
+                        <span class="stat-value">{{ sub.student_count }}</span>
+                        <span class="stat-label">Students</span>
+                    </div>
+                </div>
+                <div class="stat-card compact">
+                    <div class="stat-info">
+                        <span class="stat-value">{{ sub.marks_entered }} / {{ sub.student_count }}</span>
+                        <span class="stat-label">Marks Entered</span>
+                    </div>
+                </div>
+                <div class="stat-card compact highlight-card">
+                    <div class="stat-info">
+                        <span class="stat-value">{{ sub.class_average if sub.class_average is not none else '—' }}</span>
+                        <span class="stat-label">Class Average</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="report-detail-grid">
+                <div class="report-box">
+                    <h4>Pass / Fail (Final ≥ {{ pass_threshold }}/50)</h4>
+                    <p><span class="pass-count">{{ sub.pass_count }}</span> passed · <span class="fail-count">{{ sub.fail_count }}</span> failed</p>
+                </div>
+                {% if sub.top_student %}
+                <div class="report-box">
+                    <h4>Top Performer</h4>
+                    <p><strong>{{ sub.top_student.name }}</strong> ({{ sub.top_student.usn }}) — Avg {{ sub.top_student.average }}</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Component</th>
+                            <th>Max</th>
+                            <th>Class Average</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% set field_labels = {
+                            'theory_1': 'Theory 1 (/25)', 'theory_2': 'Theory 2 (/25)',
+                            'assignment_1': 'Assignment 1 (/25)', 'assignment_2': 'Assignment 2 (/25)',
+                            'skill_development': 'Skill Development (/50)',
+                            'lab_1': 'Lab 1 (/100)', 'lab_2': 'Lab 2 (/100)'
+                        } %}
+                        {% for key, label in field_labels.items() %}
+                        {% if key not in ['assignment_1', 'assignment_2'] or sub.mark_type == 'assignments' %}
+                        {% if key != 'skill_development' or sub.mark_type == 'skill_development' %}
+                        <tr>
+                            <td>{{ label }}</td>
+                            <td>{{ mark_field_limits[key] if key in mark_field_limits else '—' }}</td>
+                            <td>{{ sub.component_averages[key] if sub.component_averages[key] is not none else '—' }}</td>
+                        </tr>
+                        {% endif %}
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        {% endfor %}
+        {% else %}
+        <section class="panel">
+            <p class="empty-text">No subjects allocated to you yet. Statistics will appear once subjects are assigned.</p>
+        </section>
+        {% endif %}
+    </main>
+</div>
+{% endblock %}

@@ -8,41 +8,75 @@
 
     <main class="main">
         <header class="topbar">
-            <h1>Subjects</h1>
+            <div>
+                <h1>Subjects</h1>
+                <p class="page-subtitle">Add subjects manually or upload in bulk via CSV</p>
+            </div>
         </header>
 
         {{ flash_messages() }}
 
-        <section class="panel">
-            <div class="panel-header"><h2>Add Subject</h2></div>
-            <form method="POST" class="inline-form">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Subject Code</label>
-                        <input type="text" name="code" placeholder="e.g. MCA101" required>
+        <div class="management-grid">
+            <section class="panel">
+                <div class="panel-header"><h2>Add Subject</h2></div>
+                <form method="POST" class="inline-form" action="{{ url_for('subjects', sem=filter_sem) if filter_sem else url_for('subjects') }}">
+                    <input type="hidden" name="action" value="add">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Subject Code</label>
+                            <input type="text" name="code" placeholder="e.g. MCA101" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Subject Name</label>
+                            <input type="text" name="name" placeholder="Subject name" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Semester</label>
+                            <select name="semester">
+                                {% for s in range(1, mca_semesters + 1) %}
+                                <option value="{{ s }}"{% if filter_sem == s %} selected{% endif %}>Semester {{ s }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group form-action">
+                            <label>&nbsp;</label>
+                            <button type="submit" class="btn-primary-sm">Add Subject</button>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>Subject Name</label>
-                        <input type="text" name="name" placeholder="Subject name" required>
+                </form>
+            </section>
+
+            <section class="panel">
+                <div class="panel-header"><h2>Upload CSV</h2></div>
+                <form method="POST" enctype="multipart/form-data" class="csv-form" action="{{ url_for('subjects', sem=filter_sem) if filter_sem else url_for('subjects') }}">
+                    <input type="hidden" name="action" value="csv_upload">
+                    <div class="csv-upload-area">
+                        <input type="file" name="csv_file" accept=".csv" required id="subject-csv">
+                        <label for="subject-csv" class="csv-label">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            Choose CSV file
+                        </label>
+                        <button type="submit" class="btn-primary-sm">Upload</button>
                     </div>
-                    <div class="form-group">
-                        <label>Semester</label>
-                        <select name="semester">
-                            {% for s in range(1, 7) %}
-                            <option value="{{ s }}">Semester {{ s }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="form-group form-action">
-                        <label>&nbsp;</label>
-                        <button type="submit" class="btn-primary-sm">Add Subject</button>
-                    </div>
-                </div>
-            </form>
-        </section>
+                    <p class="csv-hint">CSV columns: <code>code, name, semester</code> (semester 1–{{ mca_semesters }})</p>
+                </form>
+            </section>
+        </div>
 
         <section class="panel">
-            <div class="panel-header"><h2>Subject List ({{ subjects|length }})</h2></div>
+            <div class="panel-header">
+                <h2>Subject List ({{ subjects|length }})</h2>
+                <form method="GET" class="filter-form">
+                    <label for="sem-filter">Semester</label>
+                    <select name="sem" id="sem-filter" onchange="this.form.submit()">
+                        <option value="all"{% if not filter_sem %} selected{% endif %}>All Semesters ({{ sem_counts.all }})</option>
+                        {% for s in range(1, mca_semesters + 1) %}
+                        <option value="{{ s }}"{% if filter_sem == s %} selected{% endif %}>Semester {{ s }} ({{ sem_counts[s] }})</option>
+                        {% endfor %}
+                    </select>
+                </form>
+            </div>
+
             {% if subjects %}
             <div class="table-wrap">
                 <table class="data-table">
@@ -65,7 +99,7 @@
                             <td>Sem {{ sub.semester }}</td>
                             <td>{{ sub.department }}</td>
                             <td>
-                                <form method="POST" action="{{ url_for('delete_subject', subject_id=sub.id) }}" onsubmit="return confirm('Delete {{ sub.name }}?')">
+                                <form method="POST" action="{{ url_for('delete_subject', subject_id=sub.id, sem=filter_sem if filter_sem else 'all') }}" onsubmit="return confirm('Delete {{ sub.name }}?')">
                                     <button type="submit" class="btn-danger-sm">Delete</button>
                                 </form>
                             </td>
@@ -75,7 +109,7 @@
                 </table>
             </div>
             {% else %}
-            <p class="empty-text">No subjects added yet.</p>
+            <p class="empty-text">{% if filter_sem %}No subjects in Semester {{ filter_sem }}.{% else %}No subjects added yet.{% endif %}</p>
             {% endif %}
         </section>
     </main>

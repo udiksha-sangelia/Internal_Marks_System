@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% from "partials/flash.html" import flash_messages %}
+{% block title %}Syllabus - Internal Marks{% endblock %}
+
+{% block body %}
+<div class="app-layout">
+    {% include "partials/admin_sidebar.html" %}
+
+    <main class="main">
+        <header class="topbar">
+            <div>
+                <h1>Semester Syllabus</h1>
+                <p class="page-subtitle">Upload PDF syllabus copies for each MCA semester</p>
+            </div>
+        </header>
+
+        {{ flash_messages() }}
+
+        <section class="panel">
+            <div class="panel-header"><h2>Upload Syllabus PDF</h2></div>
+            <form method="POST" enctype="multipart/form-data" class="inline-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Semester</label>
+                        <select name="semester">
+                            {% for s in range(1, mca_semesters + 1) %}
+                            <option value="{{ s }}">Semester {{ s }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>PDF File</label>
+                        <input type="file" name="pdf_file" accept=".pdf" required>
+                    </div>
+                    <div class="form-group form-action">
+                        <label>&nbsp;</label>
+                        <button type="submit" class="btn-primary-sm">Upload Syllabus</button>
+                    </div>
+                </div>
+            </form>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header"><h2>Syllabus by Semester</h2></div>
+            <div class="syllabus-grid">
+                {% for sem in range(1, mca_semesters + 1) %}
+                <div class="syllabus-card">
+                    <h3>Semester {{ sem }}</h3>
+                    {% if syllabi.get(sem) %}
+                    <p class="syllabus-file">{{ syllabi[sem].original_name }}</p>
+                    <p class="syllabus-meta">Updated {{ syllabi[sem].uploaded_at.strftime('%d %b %Y') if syllabi[sem].uploaded_at else '—' }}</p>
+                    <a href="{{ url_for('syllabus_file', semester=sem) }}" target="_blank" class="btn-primary-sm link-btn">View PDF</a>
+                    {% else %}
+                    <p class="empty-text">No syllabus uploaded yet.</p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+    </main>
+</div>
+{% endblock %}

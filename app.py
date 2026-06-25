@@ -1,9 +1,11 @@
 import csv
 import io
 import os
+import uuid
 from functools import wraps
 
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory
+from werkzeug.utils import secure_filename
 
 import database as db
 
@@ -14,6 +16,41 @@ ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
 
 db.init_db()
+
+
+@app.context_processor
+def inject_mca_config():
+    return {
+        "mca_semesters": db.MCA_SEMESTERS,
+        "mark_field_limits": db.MARK_FIELD_LIMITS,
+        "mark_types": db.MARK_TYPES,
+        "pass_threshold": db.PASS_THRESHOLD,
+        "final_max": db.FINAL_MAX,
+    }
+
+
+def parse_semester(value, default=1):
+    try:
+        semester = int(value)
+    except (TypeError, ValueError):
+        return default
+    if 1 <= semester <= db.MCA_SEMESTERS:
+        return semester
+    return None
+
+
+def get_list_semester_filter():
+    sem = request.args.get("sem")
+    if sem in (None, "", "all"):
+        return None
+    return parse_semester(sem)
+
+
+def redirect_preserve_sem(endpoint, **kwargs):
+    sem = request.args.get("sem")
+    if sem:
+        kwargs["sem"] = sem
+    return redirect(url_for(endpoint, **kwargs))
 
 
 # ---------- Auth helpers ----------
@@ -54,6 +91,54 @@ def parse_csv_upload(file, required_fields):
         if all(cleaned.get(f) for f in required_fields):
             rows.append(cleaned)
     return rows
+
+
+def parse_mark_field(raw, field_name):
+    if raw is None or str(raw).strip() == "":
+        return None
+    value = float(raw)
+    max_val = db.MARK_FIELD_LIMITS[field_name]
+    if value < 0 or value > max_val:
+        raise ValueError(f"{field_name} out of range")
+    return value
+
+
+def parse_mark_row(row, mark_type="assignments"):
+    components = {}
+    legacy_map = {
+        "internal_1": "theory_1",
+        "internal_2": "theory_2",
+        "theory": "theory_1",
+        "theory_marks": "theory_1",
+        "marks": "theory_1",
+        "assignment_marks": "assignment_1",
+        "assignment": "assignment_1",
+        "project_marks": "skill_development",
+        "project": "skill_development",
+        "skill": "skill_development",
+    }
+    allowed = set(db.INPUT_MARK_FIELDS)
+    if mark_type == "assignments":
+        allowed -= set(db.SKILL_FIELDS)
+    else:
+        allowed -= set(db.ASSIGNMENT_FIELDS)
+
+    for key in allowed:
+        if row.get(key) not in (None, ""):
+            components[key] = parse_mark_field(row[key], key)
+    for legacy, target in legacy_map.items():
+        if legacy in row and row[legacy] not in (None, "") and target in allowed and target not in components:
+            components[target] = parse_mark_field(row[legacy], target)
+    return components
+
+
+def input_fields_for_mark_type(mark_type):
+    fields = list(db.THEORY_FIELDS) + list(db.LAB_RAW_FIELDS)
+    if mark_type == "skill_development":
+        fields += list(db.SKILL_FIELDS)
+    else:
+        fields += list(db.ASSIGNMENT_FIELDS)
+    return fields
 
 
 # ---------- Home & Admin Login ----------
@@ -158,9 +243,11 @@ def students():
                 flash("USN, name and email are required.", "error")
             elif db.get_student_by_usn(usn):
                 flash(f"Student with USN {usn} already exists.", "error")
+            elif parse_semester(semester) is None:
+                flash(f"Semester must be between 1 and {db.MCA_SEMESTERS}.", "error")
             else:
                 try:
-                    db.add_student(usn, name, email, int(semester))
+                    db.add_student(usn, name, email, parse_semester(semester))
                     flash(f"Student {name} added successfully.", "success")
                 except Exception:
                     flash("Failed to add student.", "error")
@@ -179,7 +266,7 @@ def students():
                         if db.get_student_by_usn(usn):
                             skipped += 1
                             continue
-                        semester = int(row.get("semester", 1) or 1)
+                        semester = parse_semester(row.get("semester", 1), default=1)
                         db.add_student(usn, row["name"], row["email"], semester)
                         added += 1
                     db.log_activity(f"Uploaded {added} students via CSV")
@@ -187,12 +274,17 @@ def students():
                 except Exception as e:
                     flash(f"CSV upload failed: {e}", "error")
 
-        return redirect(url_for("students"))
+        return redirect(url_for("students", **({"sem": request.args.get("sem")} if request.args.get("sem") else {})))
 
+    filter_sem = get_list_semester_filter()
+    student_list = db.get_students(semester=filter_sem)
+    sem_counts = db.get_student_semester_counts()
     return render_template(
         "students.html",
         admin_name=session.get("admin_name", "Admin"),
-        students=db.get_students(),
+        students=student_list,
+        filter_sem=filter_sem,
+        sem_counts=sem_counts,
         active_page="students",
     )
 
@@ -204,7 +296,7 @@ def delete_student(student_id):
         flash("Student deleted successfully.", "success")
     else:
         flash("Student not found.", "error")
-    return redirect(url_for("students"))
+    return redirect(url_for("students", sem=request.args.get("sem")))
 
 
 @app.route("/students/bulk-delete", methods=["POST"])
@@ -222,7 +314,7 @@ def bulk_delete_students():
             except Exception:
                 pass
         flash(f"{deleted_count} student(s) deleted successfully.", "success")
-    return redirect(url_for("students"))
+    return redirect(url_for("students", sem=request.args.get("sem")))
 
 
 # ---------- Faculties Management ----------
@@ -294,24 +386,56 @@ def delete_faculty(faculty_id):
 @admin_required
 def subjects():
     if request.method == "POST":
+        action = request.form.get("action", "add")
+
+        if action == "csv_upload":
+            file = request.files.get("csv_file")
+            if not file or not file.filename:
+                flash("Please select a CSV file.", "error")
+            else:
+                try:
+                    rows = parse_csv_upload(file, ["code", "name"])
+                    added = 0
+                    skipped = 0
+                    for row in rows:
+                        code = row["code"].upper()
+                        if db.get_subject_by_code(code):
+                            skipped += 1
+                            continue
+                        semester = parse_semester(row.get("semester", 1), default=1)
+                        db.add_subject(code, row["name"], semester)
+                        added += 1
+                    db.log_activity(f"Uploaded {added} subjects via CSV")
+                    flash(f"CSV upload complete: {added} added, {skipped} skipped.", "success")
+                except Exception as e:
+                    flash(f"CSV upload failed: {e}", "error")
+            return redirect(url_for("subjects", **({"sem": request.args.get("sem")} if request.args.get("sem") else {})))
+
         code = (request.form.get("code") or "").strip().upper()
         name = (request.form.get("name") or "").strip()
         semester = request.form.get("semester", "1")
 
         if not code or not name:
             flash("Subject code and name are required.", "error")
+        elif parse_semester(semester) is None:
+            flash(f"Semester must be between 1 and {db.MCA_SEMESTERS}.", "error")
         else:
             try:
-                db.add_subject(code, name, int(semester))
+                db.add_subject(code, name, parse_semester(semester))
                 flash(f"Subject {name} added successfully.", "success")
             except Exception:
                 flash("Failed to add subject. Code may already exist.", "error")
-        return redirect(url_for("subjects"))
+        return redirect(url_for("subjects", **({"sem": request.args.get("sem")} if request.args.get("sem") else {})))
 
+    filter_sem = get_list_semester_filter()
+    subject_list = db.get_subjects(semester=filter_sem)
+    sem_counts = db.get_subject_semester_counts()
     return render_template(
         "subjects.html",
         admin_name=session.get("admin_name", "Admin"),
-        subjects=db.get_subjects(),
+        subjects=subject_list,
+        filter_sem=filter_sem,
+        sem_counts=sem_counts,
         active_page="subjects",
     )
 
@@ -321,7 +445,60 @@ def subjects():
 def delete_subject(subject_id):
     db.delete_subject(subject_id)
     flash("Subject deleted successfully.", "success")
-    return redirect(url_for("subjects"))
+    return redirect(url_for("subjects", sem=request.args.get("sem")))
+
+
+@app.route("/syllabus", methods=["GET", "POST"])
+@admin_required
+def admin_syllabus():
+    if request.method == "POST":
+        semester = request.form.get("semester", "1")
+        file = request.files.get("pdf_file")
+        sem = parse_semester(semester)
+        if sem is None:
+            flash(f"Semester must be between 1 and {db.MCA_SEMESTERS}.", "error")
+        elif not file or not file.filename:
+            flash("Please select a PDF file.", "error")
+        elif not file.filename.lower().endswith(".pdf"):
+            flash("Only PDF files are allowed.", "error")
+        else:
+            original_name = secure_filename(file.filename)
+            stored_name = f"sem{sem}_{uuid.uuid4().hex[:8]}_{original_name}"
+            file.save(db.UPLOAD_DIR / stored_name)
+            existing = db.get_syllabus_by_semester(sem)
+            if existing:
+                old_path = db.UPLOAD_DIR / existing["filename"]
+                if old_path.exists():
+                    old_path.unlink()
+            db.upsert_syllabus(sem, stored_name, original_name)
+            flash(f"Syllabus uploaded for Semester {sem}.", "success")
+        return redirect(url_for("admin_syllabus"))
+
+    syllabi = {s["semester"]: s for s in db.get_syllabi()}
+    return render_template(
+        "admin_syllabus.html",
+        admin_name=session.get("admin_name", "Admin"),
+        syllabi=syllabi,
+        active_page="syllabus",
+    )
+
+
+@app.route("/syllabus/file/<int:semester>")
+def syllabus_file(semester):
+    if not session.get("logged_in"):
+        return redirect(url_for("login"))
+    if session.get("role") not in ("faculty", "admin"):
+        flash("Access denied.", "error")
+        return redirect(url_for("home"))
+
+    record = db.get_syllabus_by_semester(semester)
+    if not record:
+        flash("Syllabus not found for this semester.", "error")
+        if session.get("role") == "faculty":
+            return redirect(url_for("faculty_dashboard"))
+        return redirect(url_for("admin_syllabus"))
+
+    return send_from_directory(db.UPLOAD_DIR, record["filename"], as_attachment=False)
 
 
 # ---------- Other Admin Pages ----------
@@ -417,14 +594,18 @@ def student_login():
 @student_required
 def student_dashboard():
     student = db.get_student_by_id(session["user_id"])
-    subject_marks, overall_average = db.get_student_semester_marks(
-        student["id"], student["semester"]
-    )
+    view_sem = request.args.get("sem", type=int) or student["semester"]
+    if view_sem < 1 or view_sem > student["semester"]:
+        view_sem = student["semester"]
+    subject_marks, overall_average = db.get_student_semester_marks(student["id"], view_sem)
+    available_sems = list(range(1, student["semester"] + 1))
     return render_template(
         "student_dashboard.html",
         student=student,
         subject_marks=subject_marks,
         overall_average=overall_average,
+        view_sem=view_sem,
+        available_sems=available_sems,
     )
 
 
@@ -462,10 +643,35 @@ def faculty_login():
     return render_template("faculty_login.html")
 
 
-@app.route("/faculty/dashboard")
+@app.route("/faculty/dashboard", methods=["GET", "POST"])
 @faculty_required
 def faculty_dashboard():
     faculty = db.get_faculty_by_id(session["user_id"])
+
+    if request.method == "POST" and request.form.get("action") == "upload_syllabus":
+        semester = request.form.get("semester", "1")
+        file = request.files.get("pdf_file")
+        sem = parse_semester(semester)
+        if sem is None:
+            flash(f"Semester must be between 1 and {db.MCA_SEMESTERS}.", "error")
+        elif not file or not file.filename:
+            flash("Please select a PDF file.", "error")
+        elif not file.filename.lower().endswith(".pdf"):
+            flash("Only PDF files are allowed.", "error")
+        else:
+            original_name = secure_filename(file.filename)
+            stored_name = f"sem{sem}_{uuid.uuid4().hex[:8]}_{original_name}"
+            file.save(db.UPLOAD_DIR / stored_name)
+            existing = db.get_syllabus_by_semester(sem)
+            if existing:
+                old_path = db.UPLOAD_DIR / existing["filename"]
+                if old_path.exists():
+                    old_path.unlink()
+            db.upsert_syllabus(sem, stored_name, original_name)
+            db.log_activity(f"{faculty['name']} uploaded syllabus for Semester {sem}")
+            flash(f"Syllabus uploaded for Semester {sem}.", "success")
+        return redirect(url_for("faculty_dashboard"))
+
     subjects = db.get_faculty_subjects(session["user_id"])
     subject_details = []
     student_ids = set()
@@ -476,19 +682,16 @@ def faculty_dashboard():
         subject_details.append({
             **sub,
             "student_count": len(students),
-            "marks_entered": sum(
-                1 for s in students
-                if s.get("marks") is not None
-                or s.get("assignment_marks") is not None
-                or s.get("lab_marks") is not None
-            ),
+            "marks_entered": sum(1 for s in students if db.row_has_marks(s)),
         })
+    syllabi = {s["semester"]: s for s in db.get_syllabi()}
     return render_template(
         "faculty_dashboard.html",
         faculty=faculty,
         subjects=subject_details,
         subject_count=len(subject_details),
         total_students=len(student_ids),
+        syllabi=syllabi,
     )
 
 
@@ -513,43 +716,27 @@ def faculty_subject_marks(subject_id):
             updated = 0
             for student in students:
                 sid = student["id"]
-                assignment_raw = request.form.get(f"assignment_{sid}", "").strip()
-                lab_raw = request.form.get(f"lab_{sid}", "").strip()
-                theory_raw = request.form.get(f"theory_{sid}", "").strip()
-
-                if not assignment_raw and not lab_raw and not theory_raw:
-                    continue
-
+                mark_type = request.form.get(f"mark_type_{sid}", "assignments")
+                if mark_type not in db.MARK_TYPES:
+                    mark_type = "assignments"
+                components = {}
+                has_value = False
                 try:
-                    assignment = float(assignment_raw) if assignment_raw else None
-                    lab = float(lab_raw) if lab_raw else None
-                    theory = float(theory_raw) if theory_raw else None
-
-                    if assignment is not None and (assignment < 0 or assignment > 10):
-                        flash(f"Assignment marks for {student['usn']} must be 0-10.", "error")
-                        return redirect(url_for("faculty_subject_marks", subject_id=subject_id))
-                    if lab is not None and (lab < 0 or lab > 10):
-                        flash(f"Lab marks for {student['usn']} must be 0-10.", "error")
-                        return redirect(url_for("faculty_subject_marks", subject_id=subject_id))
-                    if theory is not None and (theory < 0 or theory > 20):
-                        flash(f"Theory marks for {student['usn']} must be 0-20.", "error")
-                        return redirect(url_for("faculty_subject_marks", subject_id=subject_id))
-
-                    db.upsert_mark(
-                        sid, subject_id,
-                        theory_marks=theory,
-                        assignment_marks=assignment,
-                        lab_marks=lab,
-                    )
+                    for field in input_fields_for_mark_type(mark_type):
+                        raw = request.form.get(f"{field}_{sid}", "").strip()
+                        if raw:
+                            has_value = True
+                            components[field] = parse_mark_field(raw, field)
+                    db.upsert_mark(sid, subject_id, mark_type, **components)
                     updated += 1
                 except ValueError:
-                    flash(f"Invalid marks for {student['usn']}.", "error")
+                    flash(f"Invalid marks for {student['usn']}. Check component ranges.", "error")
                     return redirect(url_for("faculty_subject_marks", subject_id=subject_id))
 
             db.log_activity(
                 f"{session.get('user_name')} updated marks for {updated} students in {subject['name']}"
             )
-            flash(f"Marks saved for {updated} student(s).", "success")
+            flash(f"Marks saved for {updated} student(s). Lab totals and final results calculated.", "success")
 
         elif action == "csv_upload":
             file = request.files.get("csv_file")
@@ -559,29 +746,21 @@ def faculty_subject_marks(subject_id):
                 try:
                     rows = parse_csv_upload(file, ["usn"])
                     entries = []
+                    default_type = "assignments"
                     for row in rows:
                         try:
-                            assignment = float(row["assignment_marks"]) if row.get("assignment_marks") else None
-                            lab = float(row["lab_marks"]) if row.get("lab_marks") else None
-                            theory_val = row.get("theory_marks") or row.get("marks")
-                            theory = float(theory_val) if theory_val else None
-
-                            if assignment is not None and (assignment < 0 or assignment > 10):
-                                raise ValueError("assignment out of range")
-                            if lab is not None and (lab < 0 or lab > 10):
-                                raise ValueError("lab out of range")
-                            if theory is not None and (theory < 0 or theory > 20):
-                                raise ValueError("theory out of range")
-
-                            if assignment is None and lab is None and theory is None:
+                            row_type = row.get("mark_type", default_type)
+                            if row_type not in db.MARK_TYPES:
+                                row_type = default_type
+                            components = parse_mark_row(row, row_type)
+                            if not components and not row.get("mark_type"):
                                 continue
-
-                            entries.append((row["usn"], theory, assignment, lab))
+                            entries.append({"usn": row["usn"], "mark_type": row_type, **components})
                         except ValueError:
                             flash(f"Invalid marks for USN {row['usn']}. Check ranges.", "error")
                             return redirect(url_for("faculty_subject_marks", subject_id=subject_id))
 
-                    updated, skipped = db.bulk_upsert_marks_by_usn(subject_id, entries)
+                    updated, skipped = db.bulk_upsert_marks_by_usn(subject_id, default_type, entries)
                     db.log_activity(
                         f"{session.get('user_name')} uploaded marks for {updated} students in {subject['name']}"
                     )
@@ -597,6 +776,18 @@ def faculty_subject_marks(subject_id):
         faculty=db.get_faculty_by_id(faculty_id),
         subject=subject,
         students=students,
+    )
+
+
+@app.route("/faculty/reports")
+@faculty_required
+def faculty_reports():
+    faculty = db.get_faculty_by_id(session["user_id"])
+    report = db.get_faculty_reports(session["user_id"])
+    return render_template(
+        "faculty_reports.html",
+        faculty=faculty,
+        report=report,
     )
 
 

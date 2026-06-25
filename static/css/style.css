@@ -692,6 +692,45 @@ body {
     color: #4f46e5;
 }
 
+.semester-group {
+    margin-bottom: 24px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+}
+
+.semester-group:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.semester-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    padding: 0 4px;
+}
+
+.semester-heading h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--purple);
+}
+
+.semester-count {
+    font-size: 13px;
+    color: var(--text-secondary);
+    background: var(--page-bg);
+    padding: 4px 10px;
+    border-radius: 999px;
+}
+
+.semester-empty {
+    padding: 8px 4px 16px;
+    font-size: 13px;
+}
+
 .back-link {
     font-size: 13px;
     color: #4f46e5;
@@ -1198,6 +1237,241 @@ body {
     margin-top: 12px;
     font-size: 12px;
     color: var(--text-muted);
+}
+
+.sem-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.sem-tab {
+    padding: 8px 16px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: #fff;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.15s;
+}
+
+.sem-tab small {
+    font-weight: 400;
+    opacity: 0.8;
+}
+
+.sem-tab:hover {
+    border-color: #4f46e5;
+    color: #4f46e5;
+}
+
+.sem-tab.active {
+    background: #4f46e5;
+    border-color: #4f46e5;
+    color: #fff;
+}
+
+.syllabus-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    padding: 4px 0;
+}
+
+.syllabus-grid.compact {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.syllabus-card {
+    background: var(--page-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+}
+
+.syllabus-card.compact {
+    text-align: center;
+}
+
+.syllabus-card h3 {
+    font-size: 15px;
+    margin-bottom: 8px;
+}
+
+.syllabus-file {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+    word-break: break-all;
+}
+
+.syllabus-meta {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+}
+
+.marks-table-wrap {
+    overflow-x: auto;
+}
+
+.marks-entry-table .group-header-row th {
+    text-align: center;
+}
+
+.group-header {
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.assignment-group {
+    background: #f5f3ff;
+    color: #7c3aed;
+}
+
+.lab-group {
+    background: #ecfdf5;
+    color: #059669;
+}
+
+.internal-group {
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.theory-group {
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.skill-group {
+    background: #ffedd5;
+    color: #ea580c;
+}
+
+.project-group {
+    background: #fff7ed;
+    color: #ea580c;
+}
+
+.mark-badge.theory {
+    background: #dbeafe;
+    color: #2563eb;
+}
+
+.mark-badge.skill {
+    background: #ffedd5;
+    color: #ea580c;
+}
+
+.calc-cell {
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+    background: #fafafa;
+}
+
+.result-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.result-badge.pass {
+    background: #d1fae5;
+    color: #059669;
+}
+
+.result-badge.fail {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.mark-type-form .form-row {
+    margin-bottom: 0;
+}
+
+.filter-form {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.filter-form label {
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.filter-form select {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 13px;
+    background: #fff;
+}
+
+.mark-type-select {
+    min-width: 140px;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 12px;
+    background: #fff;
+}
+
+.hidden-cell {
+    display: none;
+}
+
+.syllabus-upload-form {
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+}
+
+.report-stats {
+    margin-bottom: 16px;
+}
+
+.stat-card.compact {
+    padding: 16px;
+}
+
+.report-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.report-box {
+    background: var(--page-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+}
+
+.report-box h4 {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+}
+
+.pass-count {
+    color: #059669;
+    font-weight: 600;
+}
+
+.fail-count {
+    color: #dc2626;
+    font-weight: 600;
 }
 
 /* ===================== RESPONSIVE ===================== */
