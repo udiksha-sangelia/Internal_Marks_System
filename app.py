@@ -3,8 +3,11 @@ import io
 import os
 import uuid
 from functools import wraps
+from dotenv import load_dotenv
 
-from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory
+load_dotenv()
+
+from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory, Response
 from werkzeug.utils import secure_filename
 
 import database as db
@@ -292,10 +295,11 @@ def students():
 @app.route("/students/delete/<int:student_id>", methods=["POST"])
 @admin_required
 def delete_student(student_id):
-    if db.delete_student(student_id):
+    result = db.delete_student(student_id)
+    if result:
         flash("Student deleted successfully.", "success")
     else:
-        flash("Student not found.", "error")
+        flash("Student not found or could not be deleted.", "error")
     return redirect(url_for("students", sem=request.args.get("sem")))
 
 
@@ -360,6 +364,20 @@ def faculties():
                 except Exception as e:
                     flash(f"CSV upload failed: {e}", "error")
 
+        elif action == "bulk_delete":
+            faculty_ids = request.form.getlist("faculty_ids")
+            if not faculty_ids:
+                flash("No faculties selected.", "error")
+            else:
+                deleted_count = 0
+                for fid in faculty_ids:
+                    try:
+                        if db.delete_faculty(int(fid)):
+                            deleted_count += 1
+                    except Exception:
+                        pass
+                flash(f"{deleted_count} faculty member(s) deleted successfully.", "success")
+
         return redirect(url_for("faculties"))
 
     return render_template(
@@ -409,6 +427,21 @@ def subjects():
                     flash(f"CSV upload complete: {added} added, {skipped} skipped.", "success")
                 except Exception as e:
                     flash(f"CSV upload failed: {e}", "error")
+            return redirect(url_for("subjects", **({"sem": request.args.get("sem")} if request.args.get("sem") else {})))
+
+        elif action == "bulk_delete":
+            subject_ids = request.form.getlist("subject_ids")
+            if not subject_ids:
+                flash("No subjects selected.", "error")
+            else:
+                deleted_count = 0
+                for sid in subject_ids:
+                    try:
+                        db.delete_subject(int(sid))
+                        deleted_count += 1
+                    except Exception:
+                        pass
+                flash(f"{deleted_count} subject(s) deleted successfully.", "success")
             return redirect(url_for("subjects", **({"sem": request.args.get("sem")} if request.args.get("sem") else {})))
 
         code = (request.form.get("code") or "").strip().upper()
@@ -501,7 +534,7 @@ def syllabus_file(semester):
     return send_from_directory(db.UPLOAD_DIR, record["filename"], as_attachment=False)
 
 
-# ---------- Other Admin Pages ----------
+# ---------- Allocations ----------
 
 @app.route("/allocations", methods=["GET", "POST"])
 @admin_required
@@ -524,6 +557,20 @@ def allocations():
                 except Exception:
                     flash("Failed to allocate subject.", "error")
 
+        elif action == "bulk_delete":
+            allocation_ids = request.form.getlist("allocation_ids")
+            if not allocation_ids:
+                flash("No allocations selected.", "error")
+            else:
+                deleted_count = 0
+                for aid in allocation_ids:
+                    try:
+                        db.delete_allocation(int(aid))
+                        deleted_count += 1
+                    except Exception:
+                        pass
+                flash(f"{deleted_count} allocation(s) removed successfully.", "success")
+
         return redirect(url_for("allocations"))
 
     return render_template(
@@ -544,13 +591,74 @@ def delete_allocation(allocation_id):
     return redirect(url_for("allocations"))
 
 
+# ---------- Reports ----------
+
 @app.route("/reports")
 @admin_required
 def reports():
+    all_subjects = db.get_subjects()
+    subject_reports = []
+    for sub in all_subjects:
+        stats = db.get_subject_statistics(sub["id"])
+        if stats:
+            subject_reports.append(stats)
+
+    sem_reports = {}
+    for stat in subject_reports:
+        sem = stat["semester"]
+        if sem not in sem_reports:
+            sem_reports[sem] = []
+        sem_reports[sem].append(stat)
+
     return render_template(
         "reports.html",
         admin_name=session.get("admin_name", "Admin"),
         stats=db.get_dashboard_stats(),
+        subject_reports=subject_reports,
+        sem_reports=sem_reports,
+        active_page="reports",
+    )
+
+
+@app.route("/reports/download/csv")
+@admin_required
+def reports_download_csv():
+    all_subjects = db.get_subjects()
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Subject Code", "Subject Name", "Semester", "Mark Type", "Total Students",
+                     "Marks Entered", "Class Average", "Pass Count", "Fail Count", "Top Student", "Top Score"])
+    for sub in all_subjects:
+        stats = db.get_subject_statistics(sub["id"])
+        if stats:
+            top = stats.get("top_student") or {}
+            writer.writerow([
+                stats["code"], stats["name"], stats["semester"], stats["mark_type"],
+                stats["student_count"], stats["marks_entered"], stats["class_average"] or "—",
+                stats["pass_count"], stats["fail_count"],
+                top.get("name", "—"), top.get("average", "—")
+            ])
+    output.seek(0)
+    return Response(output.getvalue(), mimetype="text/csv",
+                    headers={"Content-Disposition": "attachment;filename=marks_report.csv"})
+
+
+@app.route("/reports/marksheet/<int:student_id>")
+@admin_required
+def student_marksheet(student_id):
+    student = db.get_student_by_id(student_id)
+    if not student:
+        flash("Student not found.", "error")
+        return redirect(url_for("reports"))
+    all_sem_marks = {}
+    for sem in range(1, student["semester"] + 1):
+        marks, avg = db.get_student_semester_marks(student_id, sem)
+        all_sem_marks[sem] = {"marks": marks, "average": avg}
+    return render_template(
+        "marksheet.html",
+        admin_name=session.get("admin_name", "Admin"),
+        student=student,
+        all_sem_marks=all_sem_marks,
         active_page="reports",
     )
 
@@ -636,7 +744,6 @@ def faculty_login():
             session["user_id"] = faculty["id"]
             session["user_name"] = faculty["name"]
             return redirect(url_for("faculty_dashboard"))
-
         elif faculty:
             flash("Invalid password.", "error")
 
@@ -720,12 +827,10 @@ def faculty_subject_marks(subject_id):
                 if mark_type not in db.MARK_TYPES:
                     mark_type = "assignments"
                 components = {}
-                has_value = False
                 try:
                     for field in input_fields_for_mark_type(mark_type):
                         raw = request.form.get(f"{field}_{sid}", "").strip()
                         if raw:
-                            has_value = True
                             components[field] = parse_mark_field(raw, field)
                     db.upsert_mark(sid, subject_id, mark_type, **components)
                     updated += 1

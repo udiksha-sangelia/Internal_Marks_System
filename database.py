@@ -1,6 +1,9 @@
 import os
 from datetime import datetime
 from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from sqlalchemy import (
     create_engine,
@@ -156,6 +159,13 @@ def _migrate_schema():
 
         existing = {col["name"] for col in insp.get_columns("marks")}
         new_cols = {
+            "assignment_1": "FLOAT",
+            "assignment_2": "FLOAT",
+            "lab_1": "FLOAT",
+            "lab_2": "FLOAT",
+            "internal_1": "FLOAT",
+            "internal_2": "FLOAT",
+            "project_marks": "FLOAT",
             "theory_1": "FLOAT",
             "theory_2": "FLOAT",
             "skill_development": "FLOAT",
@@ -340,7 +350,7 @@ def get_students(department=DEPARTMENT, semester=None):
     stmt = select(students).where(students.c.department == department)
     if semester is not None:
         stmt = stmt.where(students.c.semester == semester)
-    stmt = stmt.order_by(students.c.semester, students.c.name)
+    stmt = stmt.order_by(students.c.semester, students.c.usn)
     with engine.connect() as conn:
         rows = conn.execute(stmt).mappings().all()
     return [dict(r) for r in rows]

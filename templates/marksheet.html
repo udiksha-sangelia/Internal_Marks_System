@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}Mark Sheet - {{ student.name }}{% endblock %}
+
+{% block body %}
+<div class="app-layout">
+    {% include "partials/admin_sidebar.html" %}
+
+    <main class="main">
+        <header class="topbar no-print">
+            <div>
+                <a href="{{ url_for('reports') }}" style="color:#2563eb;text-decoration:none;font-size:0.9rem;">← Back to Reports</a>
+                <h1 style="margin-top:0.25rem;">Mark Sheet</h1>
+            </div>
+            <button onclick="window.print()" class="btn-primary-sm">🖨 Print / Save PDF</button>
+        </header>
+
+        <div class="marksheet-print-area">
+            <div class="marksheet-header">
+                <h2 style="text-align:center;font-size:1.4rem;margin:0;">MCA Department — Internal Assessment Mark Sheet</h2>
+                <hr style="margin:0.75rem 0;">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem 2rem;font-size:0.95rem;">
+                    <div><strong>Name:</strong> {{ student.name }}</div>
+                    <div><strong>USN:</strong> {{ student.usn }}</div>
+                    <div><strong>Email:</strong> {{ student.email }}</div>
+                    <div><strong>Department:</strong> {{ student.department }}</div>
+                    <div><strong>Current Semester:</strong> {{ student.semester }}</div>
+                    <div><strong>Generated:</strong> <span id="genDate"></span></div>
+                </div>
+            </div>
+
+            {% for sem in range(1, student.semester + 1) %}
+            {% set sem_data = all_sem_marks[sem] %}
+            <div style="margin-top:1.5rem;">
+                <h3 style="font-size:1rem;background:#f0f4ff;padding:0.5rem 1rem;border-radius:6px;margin-bottom:0.5rem;">
+                    Semester {{ sem }}
+                    {% if sem_data.average is not none %}
+                    — Average: <strong>{{ sem_data.average }}/50</strong>
+                    {% endif %}
+                </h3>
+                {% if sem_data.marks %}
+                <div class="table-wrap">
+                    <table class="data-table marks-table" style="font-size:0.85rem;">
+                        <thead>
+                            <tr class="group-header-row">
+                                <th rowspan="2">#</th>
+                                <th rowspan="2">Code</th>
+                                <th rowspan="2">Subject</th>
+                                <th rowspan="2">Type</th>
+                                <th colspan="2" class="group-header theory-group">Theory</th>
+                                <th colspan="2" class="group-header lab-group">Lab</th>
+                                <th rowspan="2" class="group-header lab-group">Lab<br><small>/50</small></th>
+                                <th colspan="2" class="group-header assignment-group">Assignments</th>
+                                <th rowspan="2" class="group-header skill-group">Skill Dev<br><small>/50</small></th>
+                                <th rowspan="2">Theory<br><small>/50</small></th>
+                                <th rowspan="2">Comp.<br><small>/50</small></th>
+                                <th rowspan="2">Total<br><small>/50</small></th>
+                                <th rowspan="2">Result</th>
+                            </tr>
+                            <tr>
+                                <th><small>T1/25</small></th>
+                                <th><small>T2/25</small></th>
+                                <th><small>L1/100</small></th>
+                                <th><small>L2/100</small></th>
+                                <th><small>A1/25</small></th>
+                                <th><small>A2/25</small></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sub in sem_data.marks %}
+                            <tr>
+                                <td>{{ loop.index }}</td>
+                                <td><strong>{{ sub.code }}</strong></td>
+                                <td>{{ sub.name }}</td>
+                                <td style="font-size:0.75rem;">
+                                    {% if sub.mark_type == 'skill_development' %}
+                                    <span style="background:#e3f2fd;color:#1565c0;padding:1px 6px;border-radius:8px;">Skill</span>
+                                    {% else %}
+                                    <span style="background:#e8f5e9;color:#2e7d32;padding:1px 6px;border-radius:8px;">Assign</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ sub.theory_1 if sub.theory_1 is not none else '—' }}</td>
+                                <td>{{ sub.theory_2 if sub.theory_2 is not none else '—' }}</td>
+                                <td>{{ sub.lab_1 if sub.lab_1 is not none else '—' }}</td>
+                                <td>{{ sub.lab_2 if sub.lab_2 is not none else '—' }}</td>
+                                <td>{{ sub.lab_final if sub.lab_final is not none else '—' }}</td>
+                                <td>{% if sub.mark_type == 'assignments' %}{{ sub.assignment_1 if sub.assignment_1 is not none else '—' }}{% else %}<span style="color:#aaa;">—</span>{% endif %}</td>
+                                <td>{% if sub.mark_type == 'assignments' %}{{ sub.assignment_2 if sub.assignment_2 is not none else '—' }}{% else %}<span style="color:#aaa;">—</span>{% endif %}</td>
+                                <td>{% if sub.mark_type == 'skill_development' %}{{ sub.skill_development if sub.skill_development is not none else '—' }}{% else %}<span style="color:#aaa;">—</span>{% endif %}</td>
+                                <td>{{ sub.theory_total if sub.theory_total is not none else '—' }}</td>
+                                <td>{{ sub.component_total if sub.component_total is not none else '—' }}</td>
+                                <td><strong>{{ sub.final_marks if sub.final_marks is not none else '—' }}</strong></td>
+                                <td>
+                                    {% if sub.result %}
+                                    <span class="result-badge {{ sub.result|lower }}">{{ sub.result }}</span>
+                                    {% else %}—{% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        {% if sem_data.average is not none %}
+                        <tfoot>
+                            <tr style="background:#f8f9fa;">
+                                <td colspan="14" style="text-align:right;font-weight:600;padding:0.5rem 1rem;">Semester {{ sem }} Average:</td>
+                                <td><strong>{{ sem_data.average }}</strong></td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                        {% endif %}
+                    </table>
+                </div>
+                {% else %}
+                <p style="color:#888;padding:0.5rem 1rem;">No subjects or marks found for Semester {{ sem }}.</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+
+            <div style="margin-top:2rem;padding-top:1rem;border-top:1px solid #ddd;font-size:0.8rem;color:#888;text-align:center;">
+                Generated by Internal Marks System — MCA Department
+            </div>
+        </div>
+    </main>
+</div>
+
+<style>
+@media print {
+    .no-print, .sidebar, nav, header.topbar { display: none !important; }
+    .app-layout { display: block !important; }
+    .main { margin: 0 !important; padding: 0 !important; }
+    .marksheet-print-area { padding: 1rem; }
+    .result-badge { border: 1px solid currentColor; }
+}
+</style>
+
+<script>
+document.getElementById('genDate').textContent = new Date().toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
+</script>
+{% endblock %}

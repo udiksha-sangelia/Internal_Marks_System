@@ -56,42 +56,74 @@
                 <h2>Current Allocations ({{ allocations|length }})</h2>
             </div>
             {% if allocations %}
-            <div class="table-wrap">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Faculty</th>
-                            <th>Email</th>
-                            <th>Subject Code</th>
-                            <th>Subject Name</th>
-                            <th>Semester</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for a in allocations %}
-                        <tr>
-                            <td>{{ loop.index }}</td>
-                            <td><strong>{{ a.faculty_name }}</strong></td>
-                            <td>{{ a.faculty_email }}</td>
-                            <td>{{ a.subject_code }}</td>
-                            <td>{{ a.subject_name }}</td>
-                            <td>Sem {{ a.semester }}</td>
-                            <td>
-                                <form method="POST" action="{{ url_for('delete_allocation', allocation_id=a.id) }}" onsubmit="return confirm('Remove this allocation?')">
-                                    <button type="submit" class="btn-danger-sm">Remove</button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+            <form id="allocForm" method="POST">
+                <input type="hidden" name="action" value="bulk_delete">
+                <div class="bulk-actions" id="allocBulkBar" style="display:none;margin-bottom:1rem;padding:1rem;background:#fff5f5;border-radius:4px;border:1px solid #ffcdd2;">
+                    <span id="allocSelectedCount">0 selected</span>
+                    <button type="submit" class="btn-danger-sm" style="margin-left:1rem;" onclick="return confirm('Remove selected allocations?')">Remove Selected</button>
+                </div>
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th style="width:40px;">
+                                    <input type="checkbox" id="allocSelectAll" onchange="toggleAllocSelectAll(this)">
+                                </th>
+                                <th>#</th>
+                                <th>Faculty</th>
+                                <th>Email</th>
+                                <th>Subject Code</th>
+                                <th>Subject Name</th>
+                                <th>Semester</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for a in allocations %}
+                            <tr>
+                                <td>
+                                    <input type="checkbox" name="allocation_ids" value="{{ a.id }}" class="allocCheckbox" onchange="updateAllocBulkActions()">
+                                </td>
+                                <td>{{ loop.index }}</td>
+                                <td><strong>{{ a.faculty_name }}</strong></td>
+                                <td>{{ a.faculty_email }}</td>
+                                <td>{{ a.subject_code }}</td>
+                                <td>{{ a.subject_name }}</td>
+                                <td>Sem {{ a.semester }}</td>
+                                <td>
+                                    <form method="POST" action="{{ url_for('delete_allocation', allocation_id=a.id) }}" onsubmit="return confirm('Remove this allocation?')" style="display:inline;">
+                                        <button type="submit" class="btn-danger-sm">Remove</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </form>
             {% else %}
             <p class="empty-text">No allocations yet. Assign subjects to faculties above.</p>
             {% endif %}
         </section>
+
+        <script>
+            function toggleAllocSelectAll(checkbox) {
+                document.querySelectorAll('.allocCheckbox').forEach(cb => cb.checked = checkbox.checked);
+                updateAllocBulkActions();
+            }
+            function updateAllocBulkActions() {
+                const checked = document.querySelectorAll('.allocCheckbox:checked');
+                const bar = document.getElementById('allocBulkBar');
+                const cnt = document.getElementById('allocSelectedCount');
+                if (checked.length > 0) {
+                    bar.style.display = 'block';
+                    cnt.textContent = checked.length + ' selected';
+                } else {
+                    bar.style.display = 'none';
+                    document.getElementById('allocSelectAll').checked = false;
+                }
+            }
+        </script>
     </main>
 </div>
 {% endblock %}

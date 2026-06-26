@@ -7,7 +7,13 @@
 
     <main class="main">
         <header class="topbar">
-            <h1>Reports</h1>
+            <div>
+                <h1>Reports &amp; Mark Sheets</h1>
+                <p class="page-subtitle">Detailed subject-wise reports and individual mark sheet generation</p>
+            </div>
+            <div style="display:flex;gap:0.5rem;align-items:center;">
+                <a href="{{ url_for('reports_download_csv') }}" class="btn-primary-sm">⬇ Download CSV Report</a>
+            </div>
         </header>
 
         <section class="stats-row">
@@ -49,10 +55,132 @@
             </div>
         </section>
 
+        {# Subject-wise Detailed Reports by Semester #}
+        {% for sem, sem_subjects in sem_reports.items()|sort %}
+        <section class="panel" style="margin-bottom:1.5rem;">
+            <div class="panel-header">
+                <h2>Semester {{ sem }} — Subject Reports</h2>
+            </div>
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Code</th>
+                            <th>Subject</th>
+                            <th>Type</th>
+                            <th>Students</th>
+                            <th>Marks Entered</th>
+                            <th>Class Avg</th>
+                            <th>Pass</th>
+                            <th>Fail</th>
+                            <th>Pass %</th>
+                            <th>Top Student</th>
+                            <th>Top Score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for stat in sem_subjects %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td><strong>{{ stat.code }}</strong></td>
+                            <td>{{ stat.name }}</td>
+                            <td>
+                                {% if stat.mark_type == 'skill_development' %}
+                                <span style="background:#e3f2fd;color:#1565c0;padding:2px 8px;border-radius:10px;font-size:0.75rem;">Skill Dev</span>
+                                {% else %}
+                                <span style="background:#e8f5e9;color:#2e7d32;padding:2px 8px;border-radius:10px;font-size:0.75rem;">Assignments</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ stat.student_count }}</td>
+                            <td>
+                                {{ stat.marks_entered }}
+                                {% if stat.student_count > 0 %}
+                                <small style="color:#888;">({{ ((stat.marks_entered / stat.student_count) * 100)|int }}%)</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if stat.class_average is not none %}
+                                <strong>{{ stat.class_average }}</strong>
+                                {% else %}<span style="color:#aaa;">—</span>{% endif %}
+                            </td>
+                            <td><span style="color:#2e7d32;font-weight:600;">{{ stat.pass_count }}</span></td>
+                            <td><span style="color:#c62828;font-weight:600;">{{ stat.fail_count }}</span></td>
+                            <td>
+                                {% set total = stat.pass_count + stat.fail_count %}
+                                {% if total > 0 %}
+                                {% set pct = ((stat.pass_count / total) * 100)|int %}
+                                <span style="color: {% if pct >= 75 %}#2e7d32{% elif pct >= 50 %}#e65100{% else %}#c62828{% endif %};font-weight:600;">{{ pct }}%</span>
+                                {% else %}<span style="color:#aaa;">—</span>{% endif %}
+                            </td>
+                            <td>
+                                {% if stat.top_student %}{{ stat.top_student.name }}
+                                <small style="color:#888;">({{ stat.top_student.usn }})</small>
+                                {% else %}<span style="color:#aaa;">—</span>{% endif %}
+                            </td>
+                            <td>
+                                {% if stat.top_student %}<strong>{{ stat.top_student.average }}</strong>
+                                {% else %}<span style="color:#aaa;">—</span>{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        {% else %}
         <section class="panel">
-            <div class="panel-header"><h2>MCA Department Summary</h2></div>
-            <p class="empty-text">Detailed reports and mark sheets will be generated here.</p>
+            <p class="empty-text">No subject data yet. Add subjects and enter marks to see reports.</p>
+        </section>
+        {% endfor %}
+
+        {# Mark Sheet Generation #}
+        <section class="panel">
+            <div class="panel-header"><h2>Individual Mark Sheet Generation</h2></div>
+            <p style="color:#666;margin-bottom:1rem;">Select a student to view and print their complete mark sheet across all semesters.</p>
+            <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;">
+                <input type="text" id="marksheetSearch" placeholder="Search by USN or name..." style="padding:0.5rem 1rem;border:1px solid #ddd;border-radius:6px;min-width:280px;font-size:0.95rem;" oninput="filterMarksheetStudents()">
+            </div>
+            <div class="table-wrap" style="margin-top:1rem;">
+                <table class="data-table" id="marksheetStudentTable">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>USN</th>
+                            <th>Name</th>
+                            <th>Semester</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="marksheetStudentBody">
+                        {% set all_students = [] %}
+                        {% for sem, sem_subjects in sem_reports.items()|sort %}
+                        {% for stat in sem_subjects %}
+                        {% if stat.top_student and stat.top_student not in all_students %}
+                        {% endif %}
+                        {% endfor %}
+                        {% endfor %}
+                        {# We need all students — we'll do this via a separate route fetch or just link to reports/marksheet #}
+                        <tr>
+                            <td colspan="5" style="text-align:center;color:#666;padding:1.5rem;">
+                                Use the search box above or visit <a href="{{ url_for('students') }}" style="color:#2563eb;">Students page</a> → click "Marksheet" on any student row.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </section>
     </main>
 </div>
+
+<script>
+function filterMarksheetStudents() {
+    const q = document.getElementById('marksheetSearch').value.toLowerCase();
+    document.querySelectorAll('#marksheetStudentBody tr[data-usn]').forEach(row => {
+        const usn = (row.dataset.usn || '').toLowerCase();
+        const name = (row.dataset.name || '').toLowerCase();
+        row.style.display = (usn.includes(q) || name.includes(q)) ? '' : 'none';
+    });
+}
+</script>
 {% endblock %}

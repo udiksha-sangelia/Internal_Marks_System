@@ -6,8 +6,7 @@ This Flask project stores academic data and can use either SQLite or MySQL.
 
 - Python 3.12+
 - Flask
-- SQLAlchemy
-- PyMySQL
+- MySQL
 
 Install dependencies:
 

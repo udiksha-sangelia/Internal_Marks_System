@@ -17,7 +17,6 @@
         {{ flash_messages() }}
 
         <div class="management-grid">
-            <!-- Add Faculty Form -->
             <section class="panel">
                 <div class="panel-header"><h2>Add Faculty</h2></div>
                 <form method="POST" class="inline-form">
@@ -39,7 +38,6 @@
                 </form>
             </section>
 
-            <!-- CSV Upload -->
             <section class="panel">
                 <div class="panel-header"><h2>Upload CSV</h2></div>
                 <form method="POST" enctype="multipart/form-data" class="csv-form">
@@ -57,44 +55,75 @@
             </section>
         </div>
 
-        <!-- Faculties Table -->
         <section class="panel">
             <div class="panel-header">
                 <h2>Faculty List ({{ faculties|length }})</h2>
             </div>
             {% if faculties %}
-            <div class="table-wrap">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Department</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for f in faculties %}
-                        <tr>
-                            <td>{{ loop.index }}</td>
-                            <td><strong>{{ f.name }}</strong></td>
-                            <td>{{ f.email }}</td>
-                            <td>{{ f.department }}</td>
-                            <td>
-                                <form method="POST" action="{{ url_for('delete_faculty', faculty_id=f.id) }}" onsubmit="return confirm('Delete {{ f.name }}?')">
-                                    <button type="submit" class="btn-danger-sm">Delete</button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+            <form id="facultyForm" method="POST">
+                <input type="hidden" name="action" value="bulk_delete">
+                <div class="bulk-actions" id="facultyBulkBar" style="display:none;margin-bottom:1rem;padding:1rem;background:#fff5f5;border-radius:4px;border:1px solid #ffcdd2;">
+                    <span id="facultySelectedCount">0 selected</span>
+                    <button type="submit" class="btn-danger-sm" style="margin-left:1rem;" onclick="return confirm('Delete selected faculties? Their allocations will also be removed.')">Delete Selected</button>
+                </div>
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th style="width:40px;">
+                                    <input type="checkbox" id="facultySelectAll" onchange="toggleFacultySelectAll(this)">
+                                </th>
+                                <th>#</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Department</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for f in faculties %}
+                            <tr>
+                                <td>
+                                    <input type="checkbox" name="faculty_ids" value="{{ f.id }}" class="facultyCheckbox" onchange="updateFacultyBulkActions()">
+                                </td>
+                                <td>{{ loop.index }}</td>
+                                <td><strong>{{ f.name }}</strong></td>
+                                <td>{{ f.email }}</td>
+                                <td>{{ f.department }}</td>
+                                <td>
+                                    <form method="POST" action="{{ url_for('delete_faculty', faculty_id=f.id) }}" onsubmit="return confirm('Delete {{ f.name }}?')" style="display:inline;">
+                                        <button type="submit" class="btn-danger-sm">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </form>
             {% else %}
             <p class="empty-text">No faculties yet. Add manually or upload a CSV file.</p>
             {% endif %}
         </section>
+
+        <script>
+            function toggleFacultySelectAll(checkbox) {
+                document.querySelectorAll('.facultyCheckbox').forEach(cb => cb.checked = checkbox.checked);
+                updateFacultyBulkActions();
+            }
+            function updateFacultyBulkActions() {
+                const checked = document.querySelectorAll('.facultyCheckbox:checked');
+                const bar = document.getElementById('facultyBulkBar');
+                const cnt = document.getElementById('facultySelectedCount');
+                if (checked.length > 0) {
+                    bar.style.display = 'block';
+                    cnt.textContent = checked.length + ' selected';
+                } else {
+                    bar.style.display = 'none';
+                    document.getElementById('facultySelectAll').checked = false;
+                }
+            }
+        </script>
     </main>
 </div>
 {% endblock %}

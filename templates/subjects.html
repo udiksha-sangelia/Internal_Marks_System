@@ -78,40 +78,72 @@
             </div>
 
             {% if subjects %}
-            <div class="table-wrap">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Code</th>
-                            <th>Name</th>
-                            <th>Semester</th>
-                            <th>Department</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for sub in subjects %}
-                        <tr>
-                            <td>{{ loop.index }}</td>
-                            <td><strong>{{ sub.code }}</strong></td>
-                            <td>{{ sub.name }}</td>
-                            <td>Sem {{ sub.semester }}</td>
-                            <td>{{ sub.department }}</td>
-                            <td>
-                                <form method="POST" action="{{ url_for('delete_subject', subject_id=sub.id, sem=filter_sem if filter_sem else 'all') }}" onsubmit="return confirm('Delete {{ sub.name }}?')">
-                                    <button type="submit" class="btn-danger-sm">Delete</button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+            <form id="subjectForm" method="POST" action="{{ url_for('subjects', sem=filter_sem) if filter_sem else url_for('subjects') }}">
+                <input type="hidden" name="action" value="bulk_delete">
+                <div class="bulk-actions" id="subjectBulkBar" style="display:none;margin-bottom:1rem;padding:1rem;background:#fff5f5;border-radius:4px;border:1px solid #ffcdd2;">
+                    <span id="subjectSelectedCount">0 selected</span>
+                    <button type="submit" class="btn-danger-sm" style="margin-left:1rem;" onclick="return confirm('Delete selected subjects? Their marks and allocations will also be removed.')">Delete Selected</button>
+                </div>
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th style="width:40px;">
+                                    <input type="checkbox" id="subjectSelectAll" onchange="toggleSubjectSelectAll(this)">
+                                </th>
+                                <th>#</th>
+                                <th>Code</th>
+                                <th>Name</th>
+                                <th>Semester</th>
+                                <th>Department</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sub in subjects %}
+                            <tr>
+                                <td>
+                                    <input type="checkbox" name="subject_ids" value="{{ sub.id }}" class="subjectCheckbox" onchange="updateSubjectBulkActions()">
+                                </td>
+                                <td>{{ loop.index }}</td>
+                                <td><strong>{{ sub.code }}</strong></td>
+                                <td>{{ sub.name }}</td>
+                                <td>Sem {{ sub.semester }}</td>
+                                <td>{{ sub.department }}</td>
+                                <td>
+                                    <form method="POST" action="{{ url_for('delete_subject', subject_id=sub.id, sem=filter_sem if filter_sem else 'all') }}" onsubmit="return confirm('Delete {{ sub.name }}?')" style="display:inline;">
+                                        <button type="submit" class="btn-danger-sm">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </form>
             {% else %}
             <p class="empty-text">{% if filter_sem %}No subjects in Semester {{ filter_sem }}.{% else %}No subjects added yet.{% endif %}</p>
             {% endif %}
         </section>
+
+        <script>
+            function toggleSubjectSelectAll(checkbox) {
+                document.querySelectorAll('.subjectCheckbox').forEach(cb => cb.checked = checkbox.checked);
+                updateSubjectBulkActions();
+            }
+            function updateSubjectBulkActions() {
+                const checked = document.querySelectorAll('.subjectCheckbox:checked');
+                const bar = document.getElementById('subjectBulkBar');
+                const cnt = document.getElementById('subjectSelectedCount');
+                if (checked.length > 0) {
+                    bar.style.display = 'block';
+                    cnt.textContent = checked.length + ' selected';
+                } else {
+                    bar.style.display = 'none';
+                    document.getElementById('subjectSelectAll').checked = false;
+                }
+            }
+        </script>
     </main>
 </div>
 {% endblock %}

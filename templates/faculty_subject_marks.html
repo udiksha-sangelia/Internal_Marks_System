@@ -23,7 +23,7 @@
     <main class="user-main">
         <a href="{{ url_for('faculty_dashboard') }}" class="back-link">← Back to Dashboard</a>
         <h1>{{ subject.name }} ({{ subject.code }})</h1>
-        <p class="page-subtitle">Semester {{ subject.semester }} — select Assignments or Skill Development per student in the table</p>
+        <p class="page-subtitle">Semester {{ subject.semester }} — use the column header dropdown to switch between Assignments and Skill Development</p>
 
         {{ flash_messages() }}
 
@@ -45,19 +45,23 @@
             </section>
 
             <section class="panel info-panel">
-                <div class="panel-header"><h2>Lab Internal Marks Calculator</h2></div>
+                <div class="panel-header"><h2>Marks Calculator Info</h2></div>
                 <div class="profile-details">
                     <div class="detail-row">
                         <span class="detail-label">Theory</span>
-                        <span class="detail-value">Theory 1 & 2 — 25 marks each (/50)</span>
+                        <span class="detail-value">T1 &amp; T2 — 25 marks each (/50 total)</span>
                     </div>
                     <div class="detail-row">
                         <span class="detail-label">Lab</span>
-                        <span class="detail-value">Lab 1 & 2 out of 100 → (Avg ÷ 100) × 50</span>
+                        <span class="detail-value">Lab 1 &amp; Lab 2 out of 100 → (Avg ÷ 100) × 50</span>
                     </div>
                     <div class="detail-row">
-                        <span class="detail-label">Component</span>
-                        <span class="detail-value">Assignments (A1+A2) or Skill Dev — /50</span>
+                        <span class="detail-label">Assignments</span>
+                        <span class="detail-value">A1 (25) + A2 (25) = /50</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Skill Dev</span>
+                        <span class="detail-value">Single field — /50</span>
                     </div>
                     <div class="detail-row">
                         <span class="detail-label">Result</span>
@@ -69,10 +73,14 @@
 
         <section class="panel">
             <div class="panel-header">
-                <h2>Student List & Marks ({{ students|length }})</h2>
+                <h2>Student List &amp; Marks ({{ students|length }})</h2>
             </div>
 
             {% if students %}
+
+            {# Detect the current mode from first student's saved mark_type #}
+            {% set saved_type = students[0].mark_type or 'assignments' %}
+
             <form method="POST" id="marksForm">
                 <input type="hidden" name="action" value="save_marks">
                 <div class="table-wrap marks-table-wrap">
@@ -82,13 +90,15 @@
                                 <th rowspan="2">#</th>
                                 <th rowspan="2">USN</th>
                                 <th rowspan="2">Name</th>
-                                <th rowspan="2">Component</th>
                                 <th colspan="2" class="group-header theory-group">Theory (/25)</th>
                                 <th colspan="3" class="group-header lab-group">Lab Calculator</th>
-                                <th colspan="2" class="group-header assignment-group assign-cols">Assignments (/25)</th>
-                                <th rowspan="2" class="group-header skill-group skill-col">Skill Dev<br><small>(/50)</small></th>
+                                <th colspan="2" class="group-header assignment-group">
+                                    <select id="globalMarkType" class="header-type-select">
+                                        <option value="assignments">Assignments</option>
+                                        <option value="skill_development">Skill Development</option>
+                                    </select>
+                                </th>
                                 <th rowspan="2">Theory<br><small>/50</small></th>
-                                <th rowspan="2">Comp.<br><small>/50</small></th>
                                 <th rowspan="2">Lab<br><small>/50</small></th>
                                 <th rowspan="2">Total<br><small>/50</small></th>
                                 <th rowspan="2">Result</th>
@@ -99,54 +109,52 @@
                                 <th>Lab 1<br><small>/100</small></th>
                                 <th>Lab 2<br><small>/100</small></th>
                                 <th>Lab Final<br><small>/50</small></th>
-                                <th class="assign-cols">A1</th>
-                                <th class="assign-cols">A2</th>
+                                <th id="subHdr1" class="assign-sub-hdr">A1 <small>(/25)</small></th>
+                                <th id="subHdr2" class="assign-sub-hdr">A2 <small>(/25)</small></th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for s in students %}
-                            {% set row_type = s.mark_type or 'assignments' %}
                             <tr data-student-id="{{ s.id }}">
                                 <td>{{ loop.index }}</td>
                                 <td><strong>{{ s.usn }}</strong></td>
                                 <td>{{ s.name }}</td>
                                 <td>
-                                    <select name="mark_type_{{ s.id }}" class="mark-type-select calc-input" data-field="mark_type">
-                                        <option value="assignments"{% if row_type == 'assignments' %} selected{% endif %}>Assignments</option>
-                                        <option value="skill_development"{% if row_type == 'skill_development' %} selected{% endif %}>Skill Development</option>
-                                    </select>
-                                </td>
-                                <td>
-                                    <input type="number" name="theory_1_{{ s.id }}" class="marks-input calc-input" data-field="theory_1" data-max="25"
+                                    <input type="number" name="theory_1_{{ s.id }}" class="marks-input calc-input" data-field="theory_1"
                                         min="0" max="25" step="0.5" value="{{ s.theory_1 if s.theory_1 is not none else '' }}" placeholder="—">
                                 </td>
                                 <td>
-                                    <input type="number" name="theory_2_{{ s.id }}" class="marks-input calc-input" data-field="theory_2" data-max="25"
+                                    <input type="number" name="theory_2_{{ s.id }}" class="marks-input calc-input" data-field="theory_2"
                                         min="0" max="25" step="0.5" value="{{ s.theory_2 if s.theory_2 is not none else '' }}" placeholder="—">
                                 </td>
                                 <td>
-                                    <input type="number" name="lab_1_{{ s.id }}" class="marks-input calc-input lab-input" data-field="lab_1" data-max="100"
+                                    <input type="number" name="lab_1_{{ s.id }}" class="marks-input calc-input" data-field="lab_1"
                                         min="0" max="100" step="0.5" value="{{ s.lab_1 if s.lab_1 is not none else '' }}" placeholder="—">
                                 </td>
                                 <td>
-                                    <input type="number" name="lab_2_{{ s.id }}" class="marks-input calc-input lab-input" data-field="lab_2" data-max="100"
+                                    <input type="number" name="lab_2_{{ s.id }}" class="marks-input calc-input" data-field="lab_2"
                                         min="0" max="100" step="0.5" value="{{ s.lab_2 if s.lab_2 is not none else '' }}" placeholder="—">
                                 </td>
                                 <td class="calc-cell lab-final-cell">{{ s.lab_final if s.lab_final is not none else '—' }}</td>
-                                <td class="assign-cell">
-                                    <input type="number" name="assignment_1_{{ s.id }}" class="marks-input calc-input assign-input" data-field="assignment_1" data-max="25"
+
+                                {# Hidden mark_type — set by JS from header dropdown #}
+                                <input type="hidden" name="mark_type_{{ s.id }}" class="mark-type-hidden" value="{{ s.mark_type or 'assignments' }}">
+
+                                {# A1 cell (col 1 of the group) #}
+                                <td class="comp-col-1">
+                                    <input type="number" name="assignment_1_{{ s.id }}" class="marks-input calc-input assign-input" data-field="assignment_1"
                                         min="0" max="25" step="0.5" value="{{ s.assignment_1 if s.assignment_1 is not none else '' }}" placeholder="—">
                                 </td>
-                                <td class="assign-cell">
-                                    <input type="number" name="assignment_2_{{ s.id }}" class="marks-input calc-input assign-input" data-field="assignment_2" data-max="25"
+
+                                {# A2 / Skill Dev cell (col 2 of the group) #}
+                                <td class="comp-col-2">
+                                    <input type="number" name="assignment_2_{{ s.id }}" class="marks-input calc-input a2-input" data-field="assignment_2"
                                         min="0" max="25" step="0.5" value="{{ s.assignment_2 if s.assignment_2 is not none else '' }}" placeholder="—">
-                                </td>
-                                <td class="skill-cell">
-                                    <input type="number" name="skill_development_{{ s.id }}" class="marks-input wide calc-input skill-input" data-field="skill_development" data-max="50"
+                                    <input type="number" name="skill_development_{{ s.id }}" class="marks-input calc-input skill-input" data-field="skill_development"
                                         min="0" max="50" step="0.5" value="{{ s.skill_development if s.skill_development is not none else '' }}" placeholder="—">
                                 </td>
+
                                 <td class="calc-cell theory-total-cell">{{ s.theory_total if s.theory_total is not none else '—' }}</td>
-                                <td class="calc-cell component-total-cell">{{ s.component_total if s.component_total is not none else '—' }}</td>
                                 <td class="calc-cell lab-final-display">{{ s.lab_final if s.lab_final is not none else '—' }}</td>
                                 <td class="calc-cell final-marks-cell"><strong>{{ s.final_marks if s.final_marks is not none else '—' }}</strong></td>
                                 <td class="calc-cell result-cell">
@@ -170,101 +178,137 @@
     </main>
 </div>
 
+<style>
+    .header-type-select {
+        font-size: 0.82rem;
+        font-weight: 600;
+        padding: 5px 8px;
+        border-radius: 6px;
+        border: 2px solid rgba(255,255,255,0.5);
+        background: rgba(255,255,255,0.15);
+        color: inherit;
+        cursor: pointer;
+        width: 100%;
+    }
+    .header-type-select:focus {
+        outline: none;
+        border-color: rgba(255,255,255,0.9);
+    }
+    /* col-2 holds both a2 and skill — only one shown at a time */
+    .comp-col-2 .a2-input,
+    .comp-col-2 .skill-input { display: none; }
+    .comp-col-2 .a2-input.show,
+    .comp-col-2 .skill-input.show { display: block; }
+    /* col-1 (A1) hidden when skill dev mode */
+    .comp-col-1.hide-col,
+    .assign-sub-hdr.hide-col { display: none; }
+</style>
+
 <script>
     const PASS_THRESHOLD = {{ pass_threshold }};
 
-    function getRowMarkType(row) {
-        const sel = row.querySelector('.mark-type-select');
-        return sel ? sel.value : 'assignments';
-    }
+    /* ── Determine initial mode from saved data ── */
+    const savedType = "{{ saved_type }}";
+    const globalSelect = document.getElementById('globalMarkType');
+    globalSelect.value = savedType;
 
     function parseVal(input) {
         if (!input || input.disabled) return null;
         const v = parseFloat(input.value);
         return input.value.trim() === '' || isNaN(v) ? null : v;
     }
-
     function calcLabFinal(l1, l2) {
         if (l1 === null || l2 === null) return null;
         return Math.round(((l1 + l2) / 2 / 100) * 50 * 100) / 100;
     }
-
     function calcTheoryTotal(t1, t2) {
         if (t1 === null && t2 === null) return null;
         return Math.round(((t1 || 0) + (t2 || 0)) * 100) / 100;
     }
-
     function calcComponentTotal(markType, a1, a2, skill) {
         if (markType === 'skill_development') return skill;
         if (a1 === null && a2 === null) return null;
         return Math.round(((a1 || 0) + (a2 || 0)) * 100) / 100;
     }
-
-    function calcFinal(theoryTotal, componentTotal, labFinal) {
-        const sections = [theoryTotal, componentTotal, labFinal].filter(v => v !== null);
-        if (!sections.length) return null;
-        return Math.round((sections.reduce((a, b) => a + b, 0) / sections.length) * 100) / 100;
+    function calcFinal(theory, comp, lab) {
+        const parts = [theory, comp, lab].filter(v => v !== null);
+        if (!parts.length) return null;
+        return Math.round((parts.reduce((a, b) => a + b, 0) / parts.length) * 100) / 100;
     }
 
-    function toggleRowColumns(row) {
-        const markType = getRowMarkType(row);
-        const assignCells = row.querySelectorAll('.assign-cell');
-        const skillCell = row.querySelector('.skill-cell');
-        const assignInputs = row.querySelectorAll('.assign-input');
-        const skillInput = row.querySelector('.skill-input');
+    function applyMode(markType) {
+        const isSkill = markType === 'skill_development';
 
-        if (markType === 'skill_development') {
-            assignCells.forEach(c => c.classList.add('hidden-cell'));
-            if (skillCell) skillCell.classList.remove('hidden-cell');
-            assignInputs.forEach(i => { i.disabled = true; });
-            if (skillInput) skillInput.disabled = false;
+        /* Update sub-headers */
+        const hdr1 = document.getElementById('subHdr1');
+        const hdr2 = document.getElementById('subHdr2');
+        if (isSkill) {
+            hdr1.classList.add('hide-col');
+            hdr2.textContent = 'Skill Dev (/50)';
         } else {
-            assignCells.forEach(c => c.classList.remove('hidden-cell'));
-            if (skillCell) skillCell.classList.add('hidden-cell');
-            assignInputs.forEach(i => { i.disabled = false; });
-            if (skillInput) skillInput.disabled = true;
+            hdr1.classList.remove('hide-col');
+            hdr1.innerHTML = 'A1 <small>(/25)</small>';
+            hdr2.innerHTML = 'A2 <small>(/25)</small>';
         }
+
+        /* Update every row */
+        document.querySelectorAll('#marksTable tbody tr').forEach(row => {
+            const hiddenType = row.querySelector('.mark-type-hidden');
+            if (hiddenType) hiddenType.value = markType;
+
+            const col1 = row.querySelector('.comp-col-1');
+            const a1Input = row.querySelector('.assign-input');
+            const a2Input = row.querySelector('.a2-input');
+            const skillInput = row.querySelector('.skill-input');
+
+            if (isSkill) {
+                if (col1) col1.classList.add('hide-col');
+                if (a1Input) { a1Input.disabled = true; a1Input.value = ''; }
+                if (a2Input) { a2Input.disabled = true; a2Input.classList.remove('show'); a2Input.value = ''; }
+                if (skillInput) { skillInput.disabled = false; skillInput.classList.add('show'); }
+            } else {
+                if (col1) col1.classList.remove('hide-col');
+                if (a1Input) { a1Input.disabled = false; }
+                if (a2Input) { a2Input.disabled = false; a2Input.classList.add('show'); }
+                if (skillInput) { skillInput.disabled = true; skillInput.classList.remove('show'); skillInput.value = ''; }
+            }
+
+            recalcRow(row, markType);
+        });
     }
 
-    function updateRow(row) {
-        toggleRowColumns(row);
-        const markType = getRowMarkType(row);
-        const get = (field) => {
-            const input = row.querySelector('[data-field="' + field + '"]');
-            return input && input.tagName === 'INPUT' ? parseVal(input) : null;
+    function recalcRow(row, markType) {
+        const get = field => {
+            const el = row.querySelector('[data-field="' + field + '"]');
+            return el && el.tagName === 'INPUT' ? parseVal(el) : null;
         };
-
         const theoryTotal = calcTheoryTotal(get('theory_1'), get('theory_2'));
-        const labFinal = calcLabFinal(get('lab_1'), get('lab_2'));
-        const componentTotal = calcComponentTotal(markType, get('assignment_1'), get('assignment_2'), get('skill_development'));
-        const finalMarks = calcFinal(theoryTotal, componentTotal, labFinal);
-        const result = finalMarks === null ? null : (finalMarks >= PASS_THRESHOLD ? 'PASS' : 'FAIL');
+        const labFinal    = calcLabFinal(get('lab_1'), get('lab_2'));
+        const comp        = calcComponentTotal(markType, get('assignment_1'), get('assignment_2'), get('skill_development'));
+        const finalMarks  = calcFinal(theoryTotal, comp, labFinal);
+        const result      = finalMarks === null ? null : (finalMarks >= PASS_THRESHOLD ? 'PASS' : 'FAIL');
 
-        const set = (selector, value) => {
-            const cell = row.querySelector(selector);
-            if (cell) cell.textContent = value === null ? '—' : value;
-        };
-
+        const set = (sel, val) => { const c = row.querySelector(sel); if (c) c.textContent = val === null ? '—' : val; };
         set('.lab-final-cell', labFinal);
         set('.lab-final-display', labFinal);
         set('.theory-total-cell', theoryTotal);
-        set('.component-total-cell', componentTotal);
         set('.final-marks-cell', finalMarks);
 
-        const resultCell = row.querySelector('.result-cell');
-        if (resultCell) {
-            resultCell.innerHTML = result
-                ? '<span class="result-badge ' + result.toLowerCase() + '">' + result + '</span>'
-                : '—';
-        }
+        const rc = row.querySelector('.result-cell');
+        if (rc) rc.innerHTML = result ? '<span class="result-badge ' + result.toLowerCase() + '">' + result + '</span>' : '—';
     }
 
+    /* Header dropdown change → apply to all rows */
+    globalSelect.addEventListener('change', () => applyMode(globalSelect.value));
+
+    /* Per-cell recalc on input */
     document.querySelectorAll('#marksTable tbody tr').forEach(row => {
-        row.querySelectorAll('.calc-input, .mark-type-select').forEach(input => {
-            input.addEventListener('input', () => updateRow(row));
-            input.addEventListener('change', () => updateRow(row));
+        row.querySelectorAll('.calc-input').forEach(inp => {
+            inp.addEventListener('input', () => recalcRow(row, globalSelect.value));
         });
-        updateRow(row);
     });
+
+    /* Init on page load */
+    applyMode(globalSelect.value);
 </script>
 {% endblock %}
