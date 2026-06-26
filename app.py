@@ -13,11 +13,21 @@ from werkzeug.utils import secure_filename
 import database as db
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-key-change-me")
+app.secret_key = os.environ.get("FLASK_SECRET_KEY")
 
-ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
-ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
+ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD")
+required = {
+    "FLASK_SECRET_KEY": app.secret_key,
+    "ADMIN_USERNAME": ADMIN_USERNAME,
+    "ADMIN_PASSWORD": ADMIN_PASSWORD,
+}
 
+missing = [name for name, value in required.items() if not value]
+if missing:
+    raise RuntimeError(
+        f"Missing required environment variables: {', '.join(missing)}"
+    )
 db.init_db()
 
 
