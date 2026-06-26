@@ -510,14 +510,20 @@ def get_subject_semester_counts(department=DEPARTMENT):
     return counts
 
 
-def add_subject(code, name, semester):
+def add_subject(code, name, semester, mark_type="assignments"):
     now = _now()
-    try:
-        with engine.begin() as conn:
-            conn.execute(insert(subjects).values(code=code, name=name, semester=semester, department=DEPARTMENT, created_at=now))
-        log_activity(f"Added subject {name} ({code})")
-    except IntegrityError:
-        raise
+
+    with engine.begin() as conn:
+        conn.execute(
+            insert(subjects).values(
+                code=code,
+                name=name,
+                semester=semester,
+                department=DEPARTMENT,
+                mark_type=mark_type,
+                created_at=now,
+            )
+        )
 
 
 def get_subject_by_code(code):
