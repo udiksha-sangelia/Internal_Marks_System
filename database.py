@@ -52,10 +52,15 @@ INPUT_MARK_FIELDS = list(THEORY_FIELDS) + list(ASSIGNMENT_FIELDS) + list(SKILL_F
 PASS_THRESHOLD = 25
 FINAL_MAX = 50
 
-DATABASE_URL="DATABASE_URL"
-print(DATABASE_URL)
 
-engine = create_engine(DB_URL, future=True)
+engine = create_engine(
+    DB_URL,
+    future=True,
+    connect_args={
+        "ssl": {}
+    },
+    pool_pre_ping=True,
+)
 metadata = MetaData()
 
 # Table definitions
@@ -738,19 +743,37 @@ def bulk_upsert_marks_by_usn(subject_id, mark_type, entries):
     skipped = 0
     for entry in entries:
         usn = entry["usn"].upper()
+
         student = get_student_by_usn(usn)
+
         if not student:
             skipped += 1
             continue
+
         row_mark_type = entry.get("mark_type", mark_type)
+
         if row_mark_type not in MARK_TYPES:
             row_mark_type = mark_type
-        if not components and not entry.get("mark_type"):
+
+        components = {
+            key: entry.get(key)
+            for key in INPUT_MARK_FIELDS
+            if key in entry
+        }
+
+        if not components:
             skipped += 1
             continue
-        upsert_mark(student["id"], subject_id, row_mark_type, **components)
+
+        upsert_mark(
+            student["id"],
+            subject_id,
+            row_mark_type,
+            **components,
+        )
+
         updated += 1
-    return updated, skipped
+        return updated, skipped
 
 
 def allocation_count():
