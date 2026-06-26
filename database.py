@@ -52,6 +52,9 @@ INPUT_MARK_FIELDS = list(THEORY_FIELDS) + list(ASSIGNMENT_FIELDS) + list(SKILL_F
 PASS_THRESHOLD = 25
 FINAL_MAX = 50
 
+DATABASE_URL="DATABASE_URL"
+print(DATABASE_URL)
+
 engine = create_engine(DB_URL, future=True)
 metadata = MetaData()
 
