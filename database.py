@@ -39,6 +39,9 @@ BASE_DIR = Path(__file__).parent
 sqlite_path = BASE_DIR / "ia_marks.db"
 DEFAULT_SQLITE_URL = f"sqlite:///{sqlite_path.as_posix()}"
 DB_URL = os.environ.get("DATABASE_URL", os.environ.get("MYSQL_URL", DEFAULT_SQLITE_URL))
+
+print("DATABASE_URL =", repr(DB_URL))
+
 UPLOAD_DIR = BASE_DIR / "uploads" / "syllabus"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
