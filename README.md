@@ -1,111 +1,349 @@
-# IA Marks
+# IA Marks System
 
-This Flask project stores academic data and can use either SQLite or MySQL.
+A Flask-based Internal Assessment (IA) Marks Management System for managing students, faculty, subjects, marks, and activities.
 
-## Requirements
+## Features
+
+- Admin, Faculty, and Student Login
+- Student & Faculty Management
+- Subject Allocation
+- IA Marks Management
+- Activities Management
+- MySQL Database Support
+- Railway Deployment Support
+
+---
+
+# Technology Stack
 
 - Python 3.12+
 - Flask
+- SQLAlchemy
+- PyMySQL
+- HTML5
+- CSS3
+- JavaScript
 - MySQL
+- Railway
 
-Install dependencies:
+---
+
+# Project Structure
+
+```
+IA Marks System/
+│
+├── app.py
+├── database.py
+├── requirements.txt
+├── Procfile
+├── static/
+├── templates/
+├── uploads/
+└── README.md
+```
+
+---
+
+# Installation
+
+Clone the repository
+
+```bash
+git clone https://github.com/<USERNAME>/Internal_Marks_System.git
+cd Internal_Marks_System
+```
+
+Create a virtual environment
+
+### Windows
 
 ```powershell
+python -m venv venv
+venv\Scripts\activate
+```
+
+### Linux / macOS
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+Install dependencies
+
+```bash
 pip install -r requirements.txt
 ```
 
-## Database configuration
+---
 
-The project reads the database connection from an environment variable.
+# Database Configuration
 
-- `DATABASE_URL` is preferred
-- `MYSQL_URL` is also supported
+The application automatically reads the database connection from the following environment variables.
 
-### MySQL URL format
+Priority:
 
-Use the SQLAlchemy MySQL URL format:
+1. DATABASE_URL
+2. MYSQL_URL
+
+---
+
+## Local MySQL
+
+Example:
 
 ```text
-mysql+pymysql://<username>:<password>@<host>:<port>/<database>
+mysql+pymysql://root:yourpassword@localhost:3306/ia_marks_db
+```
+
+Windows PowerShell
+
+```powershell
+$env:DATABASE_URL="mysql+pymysql://root:yourpassword@localhost:3306/ia_marks_db"
+```
+
+Permanent
+
+```powershell
+setx DATABASE_URL "mysql+pymysql://root:yourpassword@localhost:3306/ia_marks_db"
+```
+
+---
+
+## Railway MySQL
+
+When deployed on Railway, the application automatically uses the Railway database.
+
+Set the following environment variable inside Railway:
+
+```
+DATABASE_URL
+```
+
+Example
+
+```text
+mysql+pymysql://root:password@mysql.railway.internal:3306/railway
+```
+
+> **Note:** The hostname `mysql.railway.internal` only works inside Railway.
+
+For local development, use:
+
+```text
+mysql+pymysql://root:password@localhost:3306/ia_marks_db
+```
+
+or Railway's **Public Connection**.
+
+---
+
+# Create Local Database
+
+Run the following SQL commands:
+
+```sql
+CREATE DATABASE ia_marks_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+CREATE USER 'ia_user'@'localhost'
+IDENTIFIED BY 'StrongP@ss!';
+
+GRANT ALL PRIVILEGES
+ON ia_marks_db.*
+TO 'ia_user'@'localhost';
+
+FLUSH PRIVILEGES;
+```
+
+---
+
+# Running the Application
+
+```bash
+python app.py
+```
+
+The application automatically creates missing tables on startup.
+
+Open
+
+```
+http://127.0.0.1:5000
+```
+
+---
+
+# Deploying on Railway
+
+## 1. Push project to GitHub
+
+```bash
+git init
+git add .
+git commit -m "Initial Commit"
+git push origin main
+```
+
+---
+
+## 2. Create Railway Project
+
+- Login to Railway
+- Create a New Project
+- Select **Deploy from GitHub**
+- Choose this repository
+
+---
+
+## 3. Create Railway MySQL
+
+Inside the same Railway project:
+
+```
+New
+→ Database
+→ MySQL
+```
+
+---
+
+## 4. Configure Environment Variables
+
+In the Flask service, add:
+
+```
+DATABASE_URL=<Railway MySQL URL>
 ```
 
 Example:
 
 ```text
-mysql+pymysql://ia_user:StrongP%40ss%21@localhost:3306/ia_marks_db
+mysql+pymysql://root:password@mysql.railway.internal:3306/railway
 ```
 
-> If your password contains special characters, URL-encode them. For example `@` becomes `%40` and `!` becomes `%21`.
+---
 
-### Set `DATABASE_URL` in PowerShell
+## 5. Procfile
 
-For the current session:
-
-```powershell
-$env:DATABASE_URL = "mysql+pymysql://ia_user:StrongP%40ss%21@localhost:3306/ia_marks_db"
+```
+web: gunicorn app:app
 ```
 
-To save permanently on Windows:
+---
 
-```powershell
-setx DATABASE_URL "mysql+pymysql://ia_user:StrongP%40ss%21@localhost:3306/ia_marks_db"
+## 6. Redeploy
+
+Railway automatically redeploys after every push to GitHub.
+
+---
+
+# Viewing the Database
+
+## Local
+
+Open MySQL Workbench
+
+Connect using
+
+Host
+
+```
+localhost
 ```
 
-## Create the MySQL database and user
+Port
 
-Run these SQL statements in MySQL Workbench or via the MySQL CLI:
-
-```sql
-CREATE DATABASE ia_marks_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'ia_user'@'localhost' IDENTIFIED BY 'StrongP@ss!';
-GRANT ALL PRIVILEGES ON ia_marks_db.* TO 'ia_user'@'localhost';
-FLUSH PRIVILEGES;
+```
+3306
 ```
 
-If you need remote access from any host:
+Database
 
-```sql
-CREATE USER 'ia_user'@'%' IDENTIFIED BY 'StrongP@ss!';
-GRANT ALL PRIVILEGES ON ia_marks_db.* TO 'ia_user'@'%';
-FLUSH PRIVILEGES;
+```
+ia_marks_db
 ```
 
-## Connect using MySQL Workbench
+---
 
-1. Open MySQL Workbench.
-2. Create a new connection.
-3. Set:
-   - Connection Name: `IA Marks`
-   - Hostname: `localhost` (or your MySQL host)
-   - Port: `3306`
-   - Username: `ia_user`
-   - Password: `StrongP@ss!`
-4. Test the connection and save.
-5. Open the connection, then open the `ia_marks_db` schema.
+## Railway
 
-## Run the app
+To inspect the Railway database locally, use the **Public Networking** connection details shown in Railway.
 
-```powershell
-python app.py
+Do **not** use:
+
+```
+mysql.railway.internal
 ```
 
-If the database exists and the URL is correct, the app will create missing tables automatically when it starts.
+outside Railway, because it is only accessible from services running inside the same Railway project.
 
-## View stored data
+---
 
-If using MySQL Workbench, open `ia_marks_db` and inspect tables such as:
+# Common Errors
 
-- `students`
-- `faculties`
-- `subjects`
-- `marks`
-- `allocations`
-- `activities`
+### Can't connect to mysql.railway.internal
 
-Or use the MySQL CLI:
+Cause:
+
+Using Railway's private hostname on your local computer.
+
+Solution:
+
+Use:
+
+- localhost (local MySQL), or
+- Railway Public Connection.
+
+---
+
+### Could not parse SQLAlchemy URL
+
+Ensure the URL starts with
+
+```text
+mysql+pymysql://
+```
+
+not
+
+```text
+mysql+pymysql//
+```
+
+---
+
+### ModuleNotFoundError
+
+Install dependencies
 
 ```bash
-mysql -u ia_user -p -h localhost -P 3306 ia_marks_db
-SHOW TABLES;
-SELECT * FROM students LIMIT 20;
+pip install -r requirements.txt
 ```
+
+---
+
+### Access denied
+
+Verify:
+
+- Username
+- Password
+- Host
+- Port
+- Database Name
+
+---
+
+# Contributors
+
+- Project Leader
+- Team Member 1
+- Team Member 2
+- Team Member 3
+
+---
+
+# License
+
+This project is developed for educational purposes.
