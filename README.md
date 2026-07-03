@@ -50,7 +50,7 @@ IA Marks System/
 Clone the repository
 
 ```bash
-git clone https://github.com/<USERNAME>/Internal_Marks_System.git
+git clone https://github.com/udiksha-sangelia/Internal_Marks_System.git
 cd Internal_Marks_System
 ```
 
