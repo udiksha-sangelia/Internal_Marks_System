@@ -1,16 +1,8 @@
-<<<<<<< HEAD
 Flask>=3.1.0
+gunicorn>=22.0.0
 SQLAlchemy>=2.0.0
 PyMySQL>=1.2.0
 python-dotenv>=1.0.0
-gunicorn>=22.0.0
-flask-cors>=6.0.0
-=======
-Flask
-gunicorn
-SQLAlchemy
-PyMySQL
-python-dotenv
 mysql-connector-python
 Werkzeug
->>>>>>> 02c96dd (config made)
+flask-cors>=6.0.0
