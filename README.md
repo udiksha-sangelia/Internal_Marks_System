@@ -2,6 +2,12 @@
 
 A Flask-based Internal Assessment (IA) Marks Management System for managing students, faculty, subjects, marks, and activities.
 
+## 🌐 Live Demo
+
+**Website:** https://ambit-internalmarkssystem-production.up.railway.app
+
+---
+
 ## Features
 
 - Admin, Faculty, and Student Login
