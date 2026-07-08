@@ -343,10 +343,11 @@ Verify:
 
 # Contributors
 
-- Project Leader
-- Team Member 1
-- Team Member 2
-- Team Member 3
+- Udiksha Sangelia
+- Manisha Patil
+- Roshita Jadhav
+- Pradnya Munjole
+- Leelavati Chungadi
 
 ---
 
