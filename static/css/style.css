@@ -269,6 +269,41 @@ body {
     color: #ffffff;
 }
 
+/* ===================== MOBILE MENU TOGGLE ===================== */
+
+.mobile-menu-toggle {
+    display: none;
+    position: fixed;
+    top: 14px;
+    left: 16px;
+    width: 42px;
+    height: 42px;
+    border: none;
+    border-radius: 10px;
+    background: var(--sidebar-bg);
+    color: #fff;
+    cursor: pointer;
+    z-index: 1001;
+    box-shadow: var(--shadow);
+}
+
+.mobile-menu-toggle svg {
+    width: 20px;
+    height: 20px;
+}
+
+.sidebar-scrim {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 998;
+}
+
+.sidebar-scrim.show {
+    display: block;
+}
+
 /* ===================== MAIN ===================== */
 
 .main {
@@ -276,6 +311,7 @@ body {
     margin-left: 250px;
     padding: 24px 28px;
     min-height: 100vh;
+    max-width: 100%;
 }
 
 /* ===================== TOPBAR ===================== */
@@ -904,6 +940,8 @@ body {
 
 .table-wrap {
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
 }
 
 .data-table {
@@ -921,15 +959,31 @@ body {
     text-transform: uppercase;
     letter-spacing: 0.04em;
     border-bottom: 2px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: var(--card-bg);
+    z-index: 2;
 }
 
 .data-table td {
     padding: 12px;
     border-bottom: 1px solid #f3f4f6;
+    text-align: center;
+}
+
+.data-table td:nth-child(1),
+.data-table td:nth-child(2),
+.data-table td:nth-child(3) {
+    text-align: left;
 }
 
 .data-table tbody tr:hover {
     background: #f9fafb;
+}
+
+img {
+    max-width: 100%;
+    height: auto;
 }
 
 /* Department hub */
@@ -1153,6 +1207,7 @@ body {
     border-radius: 8px;
     font-size: 14px;
     font-family: inherit;
+    text-align: center;
     outline: none;
 }
 
@@ -1357,11 +1412,6 @@ body {
     color: #ea580c;
 }
 
-.mark-badge.theory {
-    background: #dbeafe;
-    color: #2563eb;
-}
-
 .mark-badge.skill {
     background: #ffedd5;
     color: #ea580c;
@@ -1490,25 +1540,50 @@ body {
     font-weight: 600;
 }
 
-/* ===================== RESPONSIVE ===================== */
+/* =====================================================
+   RESPONSIVE — breakpoint tiers
+   Desktop:      1440px and up  (default styles above)
+   Laptop:       1024px – 1439px (default styles above)
+   Tablet:       768px  – 1023px
+   Large Mobile: 481px  – 767px
+   Mobile:       320px  – 480px
+   ===================================================== */
 
-@media (max-width: 1200px) {
+/* ---------- Tablet and down (<=1023px) ---------- */
+@media (max-width: 1023px) {
+    .mobile-menu-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        width: 240px;
+        overflow-y: auto;
+        transform: translateX(-100%);
+        transition: transform .25s ease;
+        z-index: 999;
+    }
+
+    .sidebar.open {
+        transform: translateX(0);
+    }
+
+    .main {
+        margin-left: 0;
+        padding-top: 64px;
+    }
+
     .stats-row {
         grid-template-columns: repeat(2, 1fr);
     }
 
     .dept-grid {
         grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-@media (max-width: 900px) {
-    .sidebar {
-        display: none;
-    }
-
-    .main {
-        margin-left: 0;
     }
 
     .bottom-row {
@@ -1526,9 +1601,24 @@ body {
     .stats-row.three-col {
         grid-template-columns: 1fr;
     }
+
+    .syllabus-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .user-topbar {
+        padding: 14px 20px;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .user-main {
+        padding: 20px;
+    }
 }
 
-@media (max-width: 600px) {
+/* ---------- Large mobile and down (<=767px) ---------- */
+@media (max-width: 767px) {
     .stats-row {
         grid-template-columns: 1fr;
     }
@@ -1541,5 +1631,106 @@ body {
         flex-direction: column;
         align-items: flex-start;
         gap: 12px;
+    }
+
+    .main {
+        padding: 20px 16px;
+        padding-top: 64px;
+    }
+
+    .syllabus-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .report-detail-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .profile-name {
+        display: none;
+    }
+
+    /* Forms: label stacked above full-width input (touch-friendly) */
+    .filter-form {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+    }
+
+    .filter-form select {
+        width: 100%;
+    }
+
+    /* Buttons: larger touch targets, consistent spacing */
+    .btn-primary-sm,
+    .btn-outline-sm,
+    .btn-danger-sm,
+    .btn-login,
+    .sem-tab {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .form-actions {
+        justify-content: stretch;
+    }
+
+    .form-actions .btn-primary-sm,
+    .form-actions button {
+        width: 100%;
+    }
+
+    /* Responsive typography */
+    .topbar h1,
+    .user-main h1 {
+        font-size: 22px;
+    }
+
+    .login-card h2 {
+        font-size: 20px;
+    }
+
+    .panel-header h2 {
+        font-size: 16px;
+    }
+}
+
+/* ---------- Mobile (<=480px) ---------- */
+@media (max-width: 480px) {
+    .login-card {
+        padding: 28px 20px;
+    }
+
+    .stat-value {
+        font-size: 22px;
+    }
+
+    .stat-card {
+        padding: 16px;
+        gap: 12px;
+    }
+
+    .panel {
+        padding: 16px;
+    }
+
+    .topbar h1,
+    .user-main h1 {
+        font-size: 19px;
+    }
+
+    .wave {
+        font-size: 19px;
+    }
+
+    .sem-tabs {
+        gap: 6px;
+    }
+
+    .sem-tab {
+        padding: 8px 12px;
+        font-size: 12px;
     }
 }

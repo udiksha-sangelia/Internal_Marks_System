@@ -85,6 +85,22 @@
                 <input type="hidden" name="action" value="save_marks">
                 <div class="table-wrap marks-table-wrap">
                     <table class="data-table marks-entry-table" id="marksTable">
+                        <colgroup>
+                            <col style="width:40px">
+                            <col style="width:110px">
+                            <col style="width:170px">
+                            <col style="width:70px">
+                            <col style="width:70px">
+                            <col style="width:80px">
+                            <col style="width:80px">
+                            <col style="width:80px">
+                            <col style="width:80px">
+                            <col style="width:90px">
+                            <col style="width:80px">
+                            <col style="width:80px">
+                            <col style="width:80px">
+                            <col style="width:90px">
+                        </colgroup>
                         <thead>
                             <tr class="group-header-row">
                                 <th rowspan="2">#</th>
@@ -92,7 +108,7 @@
                                 <th rowspan="2">Name</th>
                                 <th colspan="2" class="group-header theory-group">Theory (/25)</th>
                                 <th colspan="3" class="group-header lab-group">Lab Calculator</th>
-                                <th colspan="2" class="group-header assignment-group">
+                                <th id="assignGroupHdr" colspan="2" class="group-header assignment-group">
                                     <select id="globalMarkType" class="header-type-select">
                                         <option value="assignments">Assignments</option>
                                         <option value="skill_development">Skill Development</option>
@@ -199,9 +215,83 @@
     .comp-col-2 .skill-input { display: none; }
     .comp-col-2 .a2-input.show,
     .comp-col-2 .skill-input.show { display: block; }
-    /* col-1 (A1) hidden when skill dev mode */
-    .comp-col-1.hide-col,
-    .assign-sub-hdr.hide-col { display: none; }
+    .table-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .marks-entry-table {
+        min-width: 1200px;
+        table-layout: fixed;
+    }
+
+    .marks-entry-table th,
+    .marks-entry-table td {
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    @media (max-width: 768px) {
+
+        .user-topbar {
+            flex-direction: column;
+            gap: 12px;
+            text-align: center;
+        }
+
+        .user-topbar-right {
+            width: 100%;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .management-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .panel {
+            padding: 12px;
+        }
+
+        .header-type-select {
+            font-size: 12px;
+            padding: 4px;
+        }
+
+        .marks-input {
+            width: 60px;
+            font-size: 12px;
+        }
+
+        .btn-primary-sm,
+        .btn-outline-sm {
+            width: 100%;
+        }
+
+        h1 {
+            font-size: 1.4rem;
+        }
+    }
+
+    @media (max-width: 375px) {
+
+        .marks-input {
+            width: 52px;
+            font-size: 11px;
+        }
+
+        .header-type-select {
+            font-size: 11px;
+        }
+
+        .panel {
+            padding: 10px;
+        }
+
+        .page-subtitle {
+            font-size: 13px;
+        }
+    }
 </style>
 
 <script>
@@ -239,14 +329,12 @@
     function applyMode(markType) {
         const isSkill = markType === 'skill_development';
 
-        /* Update sub-headers */
+        /* Update sub-headers — colspan stays fixed at 2, never shifts layout */
         const hdr1 = document.getElementById('subHdr1');
         const hdr2 = document.getElementById('subHdr2');
         if (isSkill) {
-            hdr1.classList.add('hide-col');
-            hdr2.textContent = 'Skill Dev (/50)';
+            hdr2.innerHTML = 'Skill Dev <small>(/50)</small>';
         } else {
-            hdr1.classList.remove('hide-col');
             hdr1.innerHTML = 'A1 <small>(/25)</small>';
             hdr2.innerHTML = 'A2 <small>(/25)</small>';
         }
@@ -262,12 +350,12 @@
             const skillInput = row.querySelector('.skill-input');
 
             if (isSkill) {
-                if (col1) col1.classList.add('hide-col');
+                if (col1) col1.classList.add('disabled-cell');
                 if (a1Input) { a1Input.disabled = true; a1Input.value = ''; }
                 if (a2Input) { a2Input.disabled = true; a2Input.classList.remove('show'); a2Input.value = ''; }
                 if (skillInput) { skillInput.disabled = false; skillInput.classList.add('show'); }
             } else {
-                if (col1) col1.classList.remove('hide-col');
+                if (col1) col1.classList.remove('disabled-cell');
                 if (a1Input) { a1Input.disabled = false; }
                 if (a2Input) { a2Input.disabled = false; a2Input.classList.add('show'); }
                 if (skillInput) { skillInput.disabled = true; skillInput.classList.remove('show'); skillInput.value = ''; }
