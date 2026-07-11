@@ -91,6 +91,12 @@
                                 {% else %}
                                 <span style="background:#e8f5e9;color:#2e7d32;padding:2px 8px;border-radius:10px;font-size:0.75rem;">Assignments</span>
                                 {% endif %}
+                                <br>
+                                {% if stat.subject_type == 'theory' %}
+                                <span style="background:#fff3e0;color:#e65100;padding:2px 8px;border-radius:10px;font-size:0.75rem;">Theory Only</span>
+                                {% else %}
+                                <span style="background:#ede7f6;color:#4527a0;padding:2px 8px;border-radius:10px;font-size:0.75rem;">Theory + Lab</span>
+                                {% endif %}
                             </td>
                             <td>{{ stat.student_count }}</td>
                             <td>

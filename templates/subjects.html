@@ -17,6 +17,48 @@
         {{ flash_messages() }}
 
         <div class="management-grid">
+            {% if edit_subject %}
+            <section class="panel">
+                <div class="panel-header"><h2>Edit Subject</h2></div>
+                <form method="POST" class="inline-form" action="{{ url_for('subjects', sem=filter_sem) if filter_sem else url_for('subjects') }}">
+                    <input type="hidden" name="action" value="edit">
+                    <input type="hidden" name="subject_id" value="{{ edit_subject.id }}">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Subject Code</label>
+                            <input type="text" value="{{ edit_subject.code }}" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>Subject Name</label>
+                            <input type="text" name="name" placeholder="Subject name" value="{{ edit_subject.name }}" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Semester</label>
+                            <select name="semester">
+                                {% for s in range(1, mca_semesters + 1) %}
+                                <option value="{{ s }}"{% if edit_subject.semester == s %} selected{% endif %}>Semester {{ s }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Subject Type</label>
+                            <select name="subject_type">
+                                <option value="theory_lab"{% if edit_subject.subject_type == 'theory_lab' %} selected{% endif %}>Theory + Lab</option>
+                                <option value="theory"{% if edit_subject.subject_type == 'theory' %} selected{% endif %}>Theory Only</option>
+                            </select>
+                        </div>
+                        <div class="form-group form-action">
+                            <label>&nbsp;</label>
+                            <button type="submit" class="btn-primary-sm">Save Changes</button>
+                        </div>
+                        <div class="form-group form-action">
+                            <label>&nbsp;</label>
+                            <a href="{{ url_for('subjects', sem=filter_sem) if filter_sem else url_for('subjects') }}" class="btn-outline-sm">Cancel</a>
+                        </div>
+                    </div>
+                </form>
+            </section>
+            {% else %}
             <section class="panel">
                 <div class="panel-header"><h2>Add Subject</h2></div>
                 <form method="POST" class="inline-form" action="{{ url_for('subjects', sem=filter_sem) if filter_sem else url_for('subjects') }}">
@@ -38,6 +80,13 @@
                                 {% endfor %}
                             </select>
                         </div>
+                        <div class="form-group">
+                            <label>Subject Type</label>
+                            <select name="subject_type">
+                                <option value="theory_lab" selected>Theory + Lab</option>
+                                <option value="theory">Theory Only</option>
+                            </select>
+                        </div>
                         <div class="form-group form-action">
                             <label>&nbsp;</label>
                             <button type="submit" class="btn-primary-sm">Add Subject</button>
@@ -45,6 +94,7 @@
                     </div>
                 </form>
             </section>
+            {% endif %}
 
             <section class="panel">
                 <div class="panel-header"><h2>Upload CSV</h2></div>
@@ -58,7 +108,7 @@
                         </label>
                         <button type="submit" class="btn-primary-sm">Upload</button>
                     </div>
-                    <p class="csv-hint">CSV columns: <code>code, name, semester</code> (semester 1–{{ mca_semesters }})</p>
+                    <p class="csv-hint">CSV columns: <code>code, name, semester</code> (semester 1–{{ mca_semesters }}). Optional <code>subject_type</code> column: <code>theory_lab</code> or <code>theory</code> (defaults to Theory + Lab).</p>
                 </form>
             </section>
         </div>
@@ -96,6 +146,7 @@
                                 <th>Name</th>
                                 <th>Semester</th>
                                 <th>Department</th>
+                                <th>Type</th>
                                 <th>Action</th>
                             </tr>
                         </thead>
@@ -111,6 +162,14 @@
                                 <td>Sem {{ sub.semester }}</td>
                                 <td>{{ sub.department }}</td>
                                 <td>
+                                    {% if sub.subject_type == 'theory' %}
+                                    <span style="background:#fff3e0;color:#e65100;padding:2px 8px;border-radius:10px;font-size:0.75rem;">Theory Only</span>
+                                    {% else %}
+                                    <span style="background:#e8f5e9;color:#2e7d32;padding:2px 8px;border-radius:10px;font-size:0.75rem;">Theory + Lab</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('subjects', edit=sub.id, sem=filter_sem if filter_sem else 'all') }}" class="btn-outline-sm" style="margin-right:6px;">Edit</a>
                                     <form method="POST" action="{{ url_for('delete_subject', subject_id=sub.id, sem=filter_sem if filter_sem else 'all') }}" onsubmit="return confirm('Delete {{ sub.name }}?')" style="display:inline;">
                                         <button type="submit" class="btn-danger-sm">Delete</button>
                                     </form>

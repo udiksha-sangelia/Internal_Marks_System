@@ -38,6 +38,7 @@
                     {% endif %}
                 </h3>
                 {% if sem_data.marks %}
+                {% set has_lab_subject = sem_data.marks|selectattr("subject_type", "ne", "theory")|list|length > 0 %}
                 <div class="table-wrap">
                     <table class="data-table marks-table" style="font-size:0.85rem;">
                         <thead>
@@ -47,8 +48,10 @@
                                 <th rowspan="2">Subject</th>
                                 <th rowspan="2">Type</th>
                                 <th colspan="2" class="group-header theory-group">Theory</th>
+                                {% if has_lab_subject %}
                                 <th colspan="2" class="group-header lab-group">Lab</th>
                                 <th rowspan="2" class="group-header lab-group">Lab<br><small>/50</small></th>
+                                {% endif %}
                                 <th colspan="2" class="group-header assignment-group">Assignments</th>
                                 <th rowspan="2" class="group-header skill-group">Skill Dev<br><small>/50</small></th>
                                 <th rowspan="2">Theory<br><small>/50</small></th>
@@ -59,14 +62,17 @@
                             <tr>
                                 <th><small>T1/25</small></th>
                                 <th><small>T2/25</small></th>
+                                {% if has_lab_subject %}
                                 <th><small>L1/100</small></th>
                                 <th><small>L2/100</small></th>
+                                {% endif %}
                                 <th><small>A1/25</small></th>
                                 <th><small>A2/25</small></th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for sub in sem_data.marks %}
+                            {% set sub_is_theory_lab = (sub.subject_type != 'theory') %}
                             <tr>
                                 <td>{{ loop.index }}</td>
                                 <td><strong>{{ sub.code }}</strong></td>
@@ -80,9 +86,17 @@
                                 </td>
                                 <td>{{ sub.theory_1 if sub.theory_1 is not none else '—' }}</td>
                                 <td>{{ sub.theory_2 if sub.theory_2 is not none else '—' }}</td>
+                                {% if has_lab_subject %}
+                                {% if sub_is_theory_lab %}
                                 <td>{{ sub.lab_1 if sub.lab_1 is not none else '—' }}</td>
                                 <td>{{ sub.lab_2 if sub.lab_2 is not none else '—' }}</td>
                                 <td>{{ sub.lab_final if sub.lab_final is not none else '—' }}</td>
+                                {% else %}
+                                <td><span style="color:#aaa;" title="Not applicable — Theory Only subject">N/A</span></td>
+                                <td><span style="color:#aaa;" title="Not applicable — Theory Only subject">N/A</span></td>
+                                <td><span style="color:#aaa;" title="Not applicable — Theory Only subject">N/A</span></td>
+                                {% endif %}
+                                {% endif %}
                                 <td>{% if sub.mark_type == 'assignments' %}{{ sub.assignment_1 if sub.assignment_1 is not none else '—' }}{% else %}<span style="color:#aaa;">—</span>{% endif %}</td>
                                 <td>{% if sub.mark_type == 'assignments' %}{{ sub.assignment_2 if sub.assignment_2 is not none else '—' }}{% else %}<span style="color:#aaa;">—</span>{% endif %}</td>
                                 <td>{% if sub.mark_type == 'skill_development' %}{{ sub.skill_development if sub.skill_development is not none else '—' }}{% else %}<span style="color:#aaa;">—</span>{% endif %}</td>
@@ -100,7 +114,7 @@
                         {% if sem_data.average is not none %}
                         <tfoot>
                             <tr style="background:#f8f9fa;">
-                                <td colspan="14" style="text-align:right;font-weight:600;padding:0.5rem 1rem;">Semester {{ sem }} Average:</td>
+                                <td colspan="{{ 14 if has_lab_subject else 11 }}" style="text-align:right;font-weight:600;padding:0.5rem 1rem;">Semester {{ sem }} Average:</td>
                                 <td><strong>{{ sem_data.average }}</strong></td>
                                 <td></td>
                             </tr>

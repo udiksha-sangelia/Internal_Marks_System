@@ -37,6 +37,8 @@ def inject_mca_config():
         "mca_semesters": db.MCA_SEMESTERS,
         "mark_field_limits": db.MARK_FIELD_LIMITS,
         "mark_types": db.MARK_TYPES,
+        "subject_types": db.SUBJECT_TYPES,
+        "subject_type_labels": db.SUBJECT_TYPE_LABELS,
         "pass_threshold": db.PASS_THRESHOLD,
         "final_max": db.FINAL_MAX,
     }
@@ -109,14 +111,24 @@ def parse_csv_upload(file, required_fields):
 def parse_mark_field(raw, field_name):
     if raw is None or str(raw).strip() == "":
         return None
+
     value = float(raw)
+
+    # Reject decimal values
+    if not value.is_integer():
+        raise ValueError("Decimal marks are not allowed.")
+
+    value = int(value)
+
     max_val = db.MARK_FIELD_LIMITS[field_name]
+
     if value < 0 or value > max_val:
         raise ValueError(f"{field_name} out of range")
+
     return value
 
 
-def parse_mark_row(row, mark_type="assignments"):
+def parse_mark_row(row, mark_type="assignments", subject_type="theory_lab"):
     components = {}
     legacy_map = {
         "internal_1": "theory_1",
@@ -135,6 +147,8 @@ def parse_mark_row(row, mark_type="assignments"):
         allowed -= set(db.SKILL_FIELDS)
     else:
         allowed -= set(db.ASSIGNMENT_FIELDS)
+    if subject_type != "theory_lab":
+        allowed -= set(db.LAB_RAW_FIELDS)
 
     for key in allowed:
         if row.get(key) not in (None, ""):
@@ -145,8 +159,10 @@ def parse_mark_row(row, mark_type="assignments"):
     return components
 
 
-def input_fields_for_mark_type(mark_type):
-    fields = list(db.THEORY_FIELDS) + list(db.LAB_RAW_FIELDS)
+def input_fields_for_mark_type(mark_type, subject_type="theory_lab"):
+    fields = list(db.THEORY_FIELDS)
+    if subject_type == "theory_lab":
+        fields += list(db.LAB_RAW_FIELDS)
     if mark_type == "skill_development":
         fields += list(db.SKILL_FIELDS)
     else:
@@ -431,12 +447,45 @@ def subjects():
                             skipped += 1
                             continue
                         semester = parse_semester(row.get("semester", 1), default=1)
-                        db.add_subject(code, row["name"], semester)
+                        row_subject_type = (row.get("subject_type") or "").strip().lower()
+                        if row_subject_type not in db.SUBJECT_TYPES:
+                            row_subject_type = db.DEFAULT_SUBJECT_TYPE
+                        db.add_subject(code, row["name"], semester, subject_type=row_subject_type)
                         added += 1
                     db.log_activity(f"Uploaded {added} subjects via CSV")
                     flash(f"CSV upload complete: {added} added, {skipped} skipped.", "success")
                 except Exception as e:
                     flash(f"CSV upload failed: {e}", "error")
+            return redirect(url_for("subjects", **({"sem": request.args.get("sem")} if request.args.get("sem") else {})))
+
+        elif action == "edit":
+            subject_id = request.form.get("subject_id")
+            name = (request.form.get("name") or "").strip()
+            semester = request.form.get("semester", "1")
+            subject_type = request.form.get("subject_type", db.DEFAULT_SUBJECT_TYPE)
+            if subject_type not in db.SUBJECT_TYPES:
+                subject_type = db.DEFAULT_SUBJECT_TYPE
+
+            if not subject_id:
+                flash("Invalid subject.", "error")
+            elif not name:
+                flash("Subject name is required.", "error")
+            elif parse_semester(semester) is None:
+                flash(f"Semester must be between 1 and {db.MCA_SEMESTERS}.", "error")
+            else:
+                try:
+                    ok = db.update_subject(
+                        int(subject_id),
+                        name=name,
+                        semester=parse_semester(semester),
+                        subject_type=subject_type,
+                    )
+                    if ok:
+                        flash(f"Subject {name} updated successfully.", "success")
+                    else:
+                        flash("Failed to update subject.", "error")
+                except Exception:
+                    flash("Failed to update subject.", "error")
             return redirect(url_for("subjects", **({"sem": request.args.get("sem")} if request.args.get("sem") else {})))
 
         elif action == "bulk_delete":
@@ -457,6 +506,9 @@ def subjects():
         code = (request.form.get("code") or "").strip().upper()
         name = (request.form.get("name") or "").strip()
         semester = request.form.get("semester", "1")
+        subject_type = request.form.get("subject_type", db.DEFAULT_SUBJECT_TYPE)
+        if subject_type not in db.SUBJECT_TYPES:
+            subject_type = db.DEFAULT_SUBJECT_TYPE
 
         if not code or not name:
             flash("Subject code and name are required.", "error")
@@ -464,7 +516,7 @@ def subjects():
             flash(f"Semester must be between 1 and {db.MCA_SEMESTERS}.", "error")
         else:
             try:
-                db.add_subject(code, name, parse_semester(semester))
+                db.add_subject(code, name, parse_semester(semester), subject_type=subject_type)
                 flash(f"Subject {name} added successfully.", "success")
             except Exception:
                 flash("Failed to add subject. Code may already exist.", "error")
@@ -473,6 +525,17 @@ def subjects():
     filter_sem = get_list_semester_filter()
     subject_list = db.get_subjects(semester=filter_sem)
     sem_counts = db.get_subject_semester_counts()
+
+    edit_subject = None
+    edit_id = request.args.get("edit")
+    if edit_id:
+        try:
+            edit_subject = db.get_subject_by_id(int(edit_id))
+        except (TypeError, ValueError):
+            edit_subject = None
+        if not edit_subject:
+            flash("Subject not found.", "error")
+
     return render_template(
         "subjects.html",
         admin_name=session.get("admin_name", "Admin"),
@@ -480,6 +543,7 @@ def subjects():
         filter_sem=filter_sem,
         sem_counts=sem_counts,
         active_page="subjects",
+        edit_subject=edit_subject,
     )
 
 
@@ -636,14 +700,16 @@ def reports_download_csv():
     all_subjects = db.get_subjects()
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["Subject Code", "Subject Name", "Semester", "Mark Type", "Total Students",
+    writer.writerow(["Subject Code", "Subject Name", "Semester", "Subject Type", "Mark Type", "Total Students",
                      "Marks Entered", "Class Average", "Pass Count", "Fail Count", "Top Student", "Top Score"])
     for sub in all_subjects:
         stats = db.get_subject_statistics(sub["id"])
         if stats:
             top = stats.get("top_student") or {}
             writer.writerow([
-                stats["code"], stats["name"], stats["semester"], stats["mark_type"],
+                stats["code"], stats["name"], stats["semester"],
+                db.SUBJECT_TYPE_LABELS.get(stats.get("subject_type"), "Theory + Lab"),
+                stats["mark_type"],
                 stats["student_count"], stats["marks_entered"], stats["class_average"] or "—",
                 stats["pass_count"], stats["fail_count"],
                 top.get("name", "—"), top.get("average", "—")
@@ -828,6 +894,8 @@ def faculty_subject_marks(subject_id):
     if request.method == "POST":
         action = request.form.get("action")
 
+        subject_type = subject.get("subject_type") or db.DEFAULT_SUBJECT_TYPE
+
         if action == "save_marks":
             students = db.get_students_for_subject(subject_id)
             updated = 0
@@ -838,7 +906,7 @@ def faculty_subject_marks(subject_id):
                     mark_type = "assignments"
                 components = {}
                 try:
-                    for field in input_fields_for_mark_type(mark_type):
+                    for field in input_fields_for_mark_type(mark_type, subject_type):
                         raw = request.form.get(f"{field}_{sid}", "").strip()
                         if raw:
                             components[field] = parse_mark_field(raw, field)
@@ -867,7 +935,7 @@ def faculty_subject_marks(subject_id):
                             row_type = row.get("mark_type", default_type)
                             if row_type not in db.MARK_TYPES:
                                 row_type = default_type
-                            components = parse_mark_row(row, row_type)
+                            components = parse_mark_row(row, row_type, subject_type)
                             if not components and not row.get("mark_type"):
                                 continue
                             entries.append({"usn": row["usn"], "mark_type": row_type, **components})

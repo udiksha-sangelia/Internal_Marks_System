@@ -46,6 +46,9 @@ UPLOAD_DIR = BASE_DIR / "uploads" / "syllabus"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 MARK_TYPES = ("assignments", "skill_development")
+SUBJECT_TYPES = ("theory_lab", "theory")
+SUBJECT_TYPE_LABELS = {"theory_lab": "Theory + Lab", "theory": "Theory Only"}
+DEFAULT_SUBJECT_TYPE = "theory_lab"
 THEORY_FIELDS = {"theory_1": 25, "theory_2": 25}
 ASSIGNMENT_FIELDS = {"assignment_1": 25, "assignment_2": 25}
 SKILL_FIELDS = {"skill_development": 50}
@@ -100,6 +103,7 @@ subjects = Table(
     Column("semester", Integer, nullable=False, default=1),
     Column("department", String(64), nullable=False, default=DEPARTMENT),
     Column("mark_type", String(32), nullable=False, default="assignments"),
+    Column("subject_type", String(32), nullable=False, default=DEFAULT_SUBJECT_TYPE),
     Column("created_at", DateTime, nullable=False),
 )
 
@@ -164,6 +168,19 @@ def _migrate_schema():
             subject_cols = {col["name"] for col in insp.get_columns("subjects")}
             if "mark_type" not in subject_cols:
                 conn.execute(text("ALTER TABLE subjects ADD COLUMN mark_type VARCHAR(32) DEFAULT 'assignments'"))
+            if "subject_type" not in subject_cols:
+                conn.execute(
+                    text(
+                        f"ALTER TABLE subjects ADD COLUMN subject_type VARCHAR(32) DEFAULT '{DEFAULT_SUBJECT_TYPE}'"
+                    )
+                )
+            # Existing subjects with no subject_type (or blank) automatically default to Theory + Lab
+            conn.execute(
+                text(
+                    f"UPDATE subjects SET subject_type = '{DEFAULT_SUBJECT_TYPE}' "
+                    "WHERE subject_type IS NULL OR subject_type = ''"
+                )
+            )
 
         if "marks" not in insp.get_table_names():
             return
@@ -499,7 +516,13 @@ def get_subjects(department=DEPARTMENT, semester=None):
     stmt = stmt.order_by(subjects.c.semester, subjects.c.name)
     with engine.connect() as conn:
         rows = conn.execute(stmt).mappings().all()
-    return [dict(r) for r in rows]
+    result = []
+    for r in rows:
+        data = dict(r)
+        if not data.get("subject_type"):
+            data["subject_type"] = DEFAULT_SUBJECT_TYPE
+        result.append(data)
+    return result
 
 
 def get_subject_semester_counts(department=DEPARTMENT):
@@ -513,8 +536,10 @@ def get_subject_semester_counts(department=DEPARTMENT):
     return counts
 
 
-def add_subject(code, name, semester, mark_type="assignments"):
+def add_subject(code, name, semester, mark_type="assignments", subject_type=DEFAULT_SUBJECT_TYPE):
     now = _now()
+    if subject_type not in SUBJECT_TYPES:
+        subject_type = DEFAULT_SUBJECT_TYPE
 
     with engine.begin() as conn:
         conn.execute(
@@ -524,6 +549,7 @@ def add_subject(code, name, semester, mark_type="assignments"):
                 semester=semester,
                 department=DEPARTMENT,
                 mark_type=mark_type,
+                subject_type=subject_type,
                 created_at=now,
             )
         )
@@ -613,7 +639,13 @@ def get_faculty_subjects(faculty_id):
     stmt = select(subjects, allocations.c.id.label("allocation_id")).join(allocations, allocations.c.subject_id == subjects.c.id).where(allocations.c.faculty_id == faculty_id).order_by(subjects.c.semester, subjects.c.name)
     with engine.connect() as conn:
         rows = conn.execute(stmt).mappings().all()
-    return [dict(r) for r in rows]
+    result = []
+    for r in rows:
+        data = dict(r)
+        if not data.get("subject_type"):
+            data["subject_type"] = DEFAULT_SUBJECT_TYPE
+        result.append(data)
+    return result
 
 
 def faculty_owns_subject(faculty_id, subject_id):
@@ -632,6 +664,8 @@ def get_subject_by_id(subject_id):
     data = dict(row)
     if not data.get("mark_type"):
         data["mark_type"] = "assignments"
+    if not data.get("subject_type"):
+        data["subject_type"] = DEFAULT_SUBJECT_TYPE
     return data
 
 
@@ -640,6 +674,64 @@ def update_subject_mark_type(subject_id, mark_type):
         return False
     with engine.begin() as conn:
         conn.execute(update(subjects).where(subjects.c.id == subject_id).values(mark_type=mark_type))
+    return True
+
+
+def _clear_lab_marks_for_subject(subject_id):
+    """When a subject is switched to Theory Only, clear any previously entered
+    lab marks and recompute final marks so results stay consistent."""
+    with engine.begin() as conn:
+        rows = conn.execute(select(marks).where(marks.c.subject_id == subject_id)).mappings().all()
+        for row in rows:
+            if row.get("lab_1") is None and row.get("lab_2") is None:
+                continue
+            mark_type = row.get("mark_type") or "assignments"
+            merged = normalize_mark_row(dict(row))
+            merged["lab_1"] = None
+            merged["lab_2"] = None
+            calculated = compute_calculated_marks(mark_type, merged)
+            conn.execute(
+                update(marks).where(marks.c.id == row["id"]).values(
+                    lab_1=None,
+                    lab_2=None,
+                    lab_final=calculated["lab_final"],
+                    final_marks=calculated["final_marks"],
+                    result=calculated["result"],
+                    updated_at=_now(),
+                )
+            )
+
+
+def update_subject(subject_id, name=None, semester=None, subject_type=None):
+    subject = get_subject_by_id(subject_id)
+    if not subject:
+        return False
+
+    values = {}
+    if name:
+        values["name"] = name.strip()
+    if semester:
+        values["semester"] = semester
+
+    switching_to_theory_only = False
+    if subject_type is not None:
+        if subject_type not in SUBJECT_TYPES:
+            subject_type = DEFAULT_SUBJECT_TYPE
+        values["subject_type"] = subject_type
+        current_type = subject.get("subject_type") or DEFAULT_SUBJECT_TYPE
+        if subject_type == "theory" and current_type != "theory":
+            switching_to_theory_only = True
+
+    if not values:
+        return False
+
+    with engine.begin() as conn:
+        conn.execute(update(subjects).where(subjects.c.id == subject_id).values(**values))
+
+    if switching_to_theory_only:
+        _clear_lab_marks_for_subject(subject_id)
+
+    log_activity(f"Updated subject {values.get('name', subject.get('name'))}")
     return True
 
 
@@ -676,6 +768,7 @@ def get_student_semester_marks(student_id, semester):
         subjects.c.code,
         subjects.c.name,
         subjects.c.semester,
+        subjects.c.subject_type,
         marks.c.mark_type,
         marks.c.theory_1,
         marks.c.theory_2,
@@ -701,6 +794,8 @@ def get_student_semester_marks(student_id, semester):
     final_scores = []
     for row in rows:
         enriched = enrich_mark_record(dict(row), row.get("mark_type") or "assignments")
+        if not enriched.get("subject_type"):
+            enriched["subject_type"] = DEFAULT_SUBJECT_TYPE
         subject_marks.append(enriched)
         if enriched.get("final_marks") is not None:
             final_scores.append(enriched["final_marks"])
@@ -871,6 +966,7 @@ def get_subject_statistics(subject_id):
         "name": subject["name"],
         "semester": subject["semester"],
         "mark_type": mark_type,
+        "subject_type": subject.get("subject_type") or DEFAULT_SUBJECT_TYPE,
         "student_count": student_count,
         "marks_entered": marks_entered,
         "class_average": class_average,

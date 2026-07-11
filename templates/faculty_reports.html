@@ -63,7 +63,10 @@
             <div class="panel-header">
                 <div>
                     <h2>{{ sub.name }} ({{ sub.code }})</h2>
-                    <p class="page-subtitle" style="margin-top: 4px;">Semester {{ sub.semester }}</p>
+                    <p class="page-subtitle" style="margin-top: 4px;">
+                        Semester {{ sub.semester }} ·
+                        {% if sub.subject_type == 'theory' %}Theory Only{% else %}Theory + Lab{% endif %}
+                    </p>
                 </div>
                 <a href="{{ url_for('faculty_subject_marks', subject_id=sub.subject_id) }}" class="btn-primary-sm link-btn">Manage Marks</a>
             </div>
@@ -119,6 +122,7 @@
                             'lab_1': 'Lab 1 (/100)', 'lab_2': 'Lab 2 (/100)'
                         } %}
                         {% for key, label in field_labels.items() %}
+                        {% if key not in ['lab_1', 'lab_2'] or sub.subject_type != 'theory' %}
                         {% if key not in ['assignment_1', 'assignment_2'] or sub.mark_type == 'assignments' %}
                         {% if key != 'skill_development' or sub.mark_type == 'skill_development' %}
                         <tr>
@@ -126,6 +130,7 @@
                             <td>{{ mark_field_limits[key] if key in mark_field_limits else '—' }}</td>
                             <td>{{ sub.component_averages[key] if sub.component_averages[key] is not none else '—' }}</td>
                         </tr>
+                        {% endif %}
                         {% endif %}
                         {% endif %}
                         {% endfor %}

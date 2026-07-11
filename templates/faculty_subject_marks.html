@@ -21,9 +21,16 @@
     </header>
 
     <main class="user-main">
+        {% set is_theory_lab = (subject.subject_type != 'theory') %}
         <a href="{{ url_for('faculty_dashboard') }}" class="back-link">← Back to Dashboard</a>
         <h1>{{ subject.name }} ({{ subject.code }})</h1>
-        <p class="page-subtitle">Semester {{ subject.semester }} — use the column header dropdown to switch between Assignments and Skill Development</p>
+        <p class="page-subtitle">
+            Semester {{ subject.semester }} —
+            <span style="background:{{ 'rgba(255,255,255,0.2)' if is_theory_lab else 'rgba(255,255,255,0.2)' }};padding:2px 8px;border-radius:10px;font-size:0.8rem;">
+                {{ 'Theory + Lab' if is_theory_lab else 'Theory Only' }}
+            </span>
+            — use the column header dropdown to switch between Assignments and Skill Development
+        </p>
 
         {{ flash_messages() }}
 
@@ -40,7 +47,11 @@
                         </label>
                         <button type="submit" class="btn-primary-sm">Upload Marks</button>
                     </div>
+                    {% if is_theory_lab %}
                     <p class="csv-hint">CSV: <code>usn, mark_type, theory_1, theory_2, lab_1, lab_2, assignment_1, assignment_2, skill_development</code></p>
+                    {% else %}
+                    <p class="csv-hint">CSV: <code>usn, mark_type, theory_1, theory_2, assignment_1, assignment_2, skill_development</code> (this is a Theory Only subject — lab columns are ignored)</p>
+                    {% endif %}
                 </form>
             </section>
 
@@ -51,10 +62,12 @@
                         <span class="detail-label">Theory</span>
                         <span class="detail-value">T1 &amp; T2 — 25 marks each (/50 total)</span>
                     </div>
+                    {% if is_theory_lab %}
                     <div class="detail-row">
                         <span class="detail-label">Lab</span>
                         <span class="detail-value">Lab 1 &amp; Lab 2 out of 100 → (Avg ÷ 100) × 50</span>
                     </div>
+                    {% endif %}
                     <div class="detail-row">
                         <span class="detail-label">Assignments</span>
                         <span class="detail-value">A1 (25) + A2 (25) = /50</span>
@@ -65,7 +78,13 @@
                     </div>
                     <div class="detail-row">
                         <span class="detail-label">Result</span>
-                        <span class="detail-value">PASS if Total ≥ {{ pass_threshold }}/50</span>
+                        <span class="detail-value">
+                            {% if is_theory_lab %}
+                            PASS if avg(Theory, Lab, Assignment/Skill) ≥ {{ pass_threshold }}/50
+                            {% else %}
+                            PASS if avg(Theory, Assignment/Skill) ≥ {{ pass_threshold }}/50
+                            {% endif %}
+                        </span>
                     </div>
                 </div>
             </section>
@@ -91,13 +110,17 @@
                             <col style="width:170px">
                             <col style="width:70px">
                             <col style="width:70px">
+                            {% if is_theory_lab %}
                             <col style="width:80px">
                             <col style="width:80px">
                             <col style="width:80px">
+                            {% endif %}
                             <col style="width:80px">
                             <col style="width:90px">
                             <col style="width:80px">
+                            {% if is_theory_lab %}
                             <col style="width:80px">
+                            {% endif %}
                             <col style="width:80px">
                             <col style="width:90px">
                         </colgroup>
@@ -107,7 +130,9 @@
                                 <th rowspan="2">USN</th>
                                 <th rowspan="2">Name</th>
                                 <th colspan="2" class="group-header theory-group">Theory (/25)</th>
+                                {% if is_theory_lab %}
                                 <th colspan="3" class="group-header lab-group">Lab Calculator</th>
+                                {% endif %}
                                 <th id="assignGroupHdr" colspan="2" class="group-header assignment-group">
                                     <select id="globalMarkType" class="header-type-select">
                                         <option value="assignments">Assignments</option>
@@ -115,16 +140,20 @@
                                     </select>
                                 </th>
                                 <th rowspan="2">Theory<br><small>/50</small></th>
+                                {% if is_theory_lab %}
                                 <th rowspan="2">Lab<br><small>/50</small></th>
+                                {% endif %}
                                 <th rowspan="2">Total<br><small>/50</small></th>
                                 <th rowspan="2">Result</th>
                             </tr>
                             <tr>
                                 <th>T1</th>
                                 <th>T2</th>
+                                {% if is_theory_lab %}
                                 <th>Lab 1<br><small>/100</small></th>
                                 <th>Lab 2<br><small>/100</small></th>
                                 <th>Lab Final<br><small>/50</small></th>
+                                {% endif %}
                                 <th id="subHdr1" class="assign-sub-hdr">A1 <small>(/25)</small></th>
                                 <th id="subHdr2" class="assign-sub-hdr">A2 <small>(/25)</small></th>
                             </tr>
@@ -137,21 +166,23 @@
                                 <td>{{ s.name }}</td>
                                 <td>
                                     <input type="number" name="theory_1_{{ s.id }}" class="marks-input calc-input" data-field="theory_1"
-                                        min="0" max="25" step="0.5" value="{{ s.theory_1 if s.theory_1 is not none else '' }}" placeholder="—">
+                                        min="0" max="25" step="1" value="{{ s.theory_1 if s.theory_1 is not none else '' }}" placeholder="—">
                                 </td>
                                 <td>
                                     <input type="number" name="theory_2_{{ s.id }}" class="marks-input calc-input" data-field="theory_2"
-                                        min="0" max="25" step="0.5" value="{{ s.theory_2 if s.theory_2 is not none else '' }}" placeholder="—">
+                                        min="0" max="25" step="1" value="{{ s.theory_2 if s.theory_2 is not none else '' }}" placeholder="—">
                                 </td>
+                                {% if is_theory_lab %}
                                 <td>
                                     <input type="number" name="lab_1_{{ s.id }}" class="marks-input calc-input" data-field="lab_1"
-                                        min="0" max="100" step="0.5" value="{{ s.lab_1 if s.lab_1 is not none else '' }}" placeholder="—">
+                                        min="0" max="100" step="1" value="{{ s.lab_1 if s.lab_1 is not none else '' }}" placeholder="—">
                                 </td>
                                 <td>
                                     <input type="number" name="lab_2_{{ s.id }}" class="marks-input calc-input" data-field="lab_2"
-                                        min="0" max="100" step="0.5" value="{{ s.lab_2 if s.lab_2 is not none else '' }}" placeholder="—">
+                                        min="0" max="100" step="1" value="{{ s.lab_2 if s.lab_2 is not none else '' }}" placeholder="—">
                                 </td>
                                 <td class="calc-cell lab-final-cell">{{ s.lab_final if s.lab_final is not none else '—' }}</td>
+                                {% endif %}
 
                                 {# Hidden mark_type — set by JS from header dropdown #}
                                 <input type="hidden" name="mark_type_{{ s.id }}" class="mark-type-hidden" value="{{ s.mark_type or 'assignments' }}">
@@ -159,19 +190,21 @@
                                 {# A1 cell (col 1 of the group) #}
                                 <td class="comp-col-1">
                                     <input type="number" name="assignment_1_{{ s.id }}" class="marks-input calc-input assign-input" data-field="assignment_1"
-                                        min="0" max="25" step="0.5" value="{{ s.assignment_1 if s.assignment_1 is not none else '' }}" placeholder="—">
+                                        min="0" max="25" step="1" value="{{ s.assignment_1 if s.assignment_1 is not none else '' }}" placeholder="—">
                                 </td>
 
                                 {# A2 / Skill Dev cell (col 2 of the group) #}
                                 <td class="comp-col-2">
                                     <input type="number" name="assignment_2_{{ s.id }}" class="marks-input calc-input a2-input" data-field="assignment_2"
-                                        min="0" max="25" step="0.5" value="{{ s.assignment_2 if s.assignment_2 is not none else '' }}" placeholder="—">
+                                        min="0" max="25" step="1" value="{{ s.assignment_2 if s.assignment_2 is not none else '' }}" placeholder="—">
                                     <input type="number" name="skill_development_{{ s.id }}" class="marks-input calc-input skill-input" data-field="skill_development"
-                                        min="0" max="50" step="0.5" value="{{ s.skill_development if s.skill_development is not none else '' }}" placeholder="—">
+                                        min="0" max="50" step="1" value="{{ s.skill_development if s.skill_development is not none else '' }}" placeholder="—">
                                 </td>
 
                                 <td class="calc-cell theory-total-cell">{{ s.theory_total if s.theory_total is not none else '—' }}</td>
+                                {% if is_theory_lab %}
                                 <td class="calc-cell lab-final-display">{{ s.lab_final if s.lab_final is not none else '—' }}</td>
+                                {% endif %}
                                 <td class="calc-cell final-marks-cell"><strong>{{ s.final_marks if s.final_marks is not none else '—' }}</strong></td>
                                 <td class="calc-cell result-cell">
                                     {% if s.result %}

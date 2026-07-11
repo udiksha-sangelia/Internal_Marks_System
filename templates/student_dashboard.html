@@ -98,6 +98,7 @@
             {% endif %}
 
             {% if subject_marks %}
+            {% set has_lab_subject = subject_marks|selectattr("subject_type", "ne", "theory")|list|length > 0 %}
             <div class="table-wrap marks-table-wrap">
                 <table class="data-table marks-entry-table student-marks-table" id="studentMarksTable">
                     <thead>
@@ -106,7 +107,9 @@
                             <th rowspan="2">Code</th>
                             <th rowspan="2">Subject</th>
                             <th colspan="2" class="group-header theory-group">Theory (/25)</th>
+                            {% if has_lab_subject %}
                             <th colspan="3" class="group-header lab-group">Lab</th>
+                            {% endif %}
                             <th colspan="3" class="group-header assignment-group">Assignments / Skill Dev</th>
                             <th rowspan="2">Theory<br><small>/50</small></th>
                             <th rowspan="2">Total<br><small>/50</small></th>
@@ -115,9 +118,11 @@
                         <tr>
                             <th>T1</th>
                             <th>T2</th>
+                            {% if has_lab_subject %}
                             <th>Lab 1<br><small>/100</small></th>
                             <th>Lab 2<br><small>/100</small></th>
                             <th>Lab<br><small>/50</small></th>
+                            {% endif %}
                             <th>Type</th>
                             <th>A1</th>
                             <th>A2 / Skill</th>
@@ -125,15 +130,24 @@
                     </thead>
                     <tbody>
                         {% for sub in subject_marks %}
+                        {% set sub_is_theory_lab = (sub.subject_type != 'theory') %}
                         <tr>
                             <td>{{ loop.index }}</td>
                             <td><strong>{{ sub.code }}</strong></td>
                             <td>{{ sub.name }}</td>
                             <td>{% if sub.theory_1 is not none %}<span class="mark-badge theory">{{ sub.theory_1 }}</span>{% else %}<span class="mark-pending">—</span>{% endif %}</td>
                             <td>{% if sub.theory_2 is not none %}<span class="mark-badge theory">{{ sub.theory_2 }}</span>{% else %}<span class="mark-pending">—</span>{% endif %}</td>
+                            {% if has_lab_subject %}
+                            {% if sub_is_theory_lab %}
                             <td>{% if sub.lab_1 is not none %}<span class="mark-badge lab">{{ sub.lab_1 }}</span>{% else %}<span class="mark-pending">—</span>{% endif %}</td>
                             <td>{% if sub.lab_2 is not none %}<span class="mark-badge lab">{{ sub.lab_2 }}</span>{% else %}<span class="mark-pending">—</span>{% endif %}</td>
                             <td>{% if sub.lab_final is not none %}<strong>{{ sub.lab_final }}</strong>{% else %}<span class="mark-pending">—</span>{% endif %}</td>
+                            {% else %}
+                            <td><span class="mark-pending" title="Not applicable — Theory Only subject">N/A</span></td>
+                            <td><span class="mark-pending" title="Not applicable — Theory Only subject">N/A</span></td>
+                            <td><span class="mark-pending" title="Not applicable — Theory Only subject">N/A</span></td>
+                            {% endif %}
+                            {% endif %}
                             <td>
                                 {% if sub.mark_type == 'skill_development' %}
                                 <span style="background:#e3f2fd;color:#1565c0;padding:2px 8px;border-radius:10px;font-size:0.75rem;">Skill Dev</span>
@@ -168,7 +182,7 @@
                     {% if overall_average is not none %}
                     <tfoot>
                         <tr class="overall-row">
-                            <td colspan="13" class="overall-label">Semester {{ view_sem }} Average Final Marks</td>
+                            <td colspan="{{ 13 if has_lab_subject else 10 }}" class="overall-label">Semester {{ view_sem }} Average Final Marks</td>
                             <td><strong class="avg-value overall">{{ overall_average }}</strong></td>
                             <td></td>
                         </tr>
@@ -176,7 +190,7 @@
                     {% endif %}
                 </table>
             </div>
-            <p class="marks-note">Lab Final = (Lab1 + Lab2 average) scaled to /50. Total = average of Theory, Component &amp; Lab sections (/50). PASS if Total ≥ {{ pass_threshold }}.</p>
+            <p class="marks-note">Lab Final = (Lab1 + Lab2 average) scaled to /50. Total = average of Theory, Component &amp; Lab sections (/50) — Theory Only subjects average Theory &amp; Component only. PASS if Total ≥ {{ pass_threshold }}.</p>
             {% else %}
             <p class="empty-text">No subjects found for Semester {{ view_sem }} yet.</p>
             {% endif %}
